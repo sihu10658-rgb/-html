@@ -1,17 +1,14 @@
-// 언어 자동 감지
-export function detectLanguage(code) {
+// optimizer.js
+function detectLanguage(code) {
     if (!code.trim()) return { lang: 'js', label: '없음' };
-    
     if (/<[a-z][\s\S]*>/i.test(code)) return { lang: 'html', label: 'HTML' };
     if (/#include|std::|cout/i.test(code)) return { lang: 'cpp', label: 'C++' };
     if (/def\s+\w+|import\s+\w+|print\(/i.test(code)) return { lang: 'python', label: 'Python' };
     if (/[\.#]?\w+\s*\{/i.test(code) && !/function|const|let|var/.test(code)) return { lang: 'css', label: 'CSS' };
-    
     return { lang: 'js', label: 'JavaScript' };
 }
 
-// 코드 압축 (Minify)
-export function minifyCode(code, lang) {
+function minifyCode(code, lang) {
     if (!code.trim()) return '';
 
     switch (lang) {
@@ -53,7 +50,7 @@ export function minifyCode(code, lang) {
     }
 }
 
-export function formatCode(code, lang) {
+function formatCode(code, lang) {
     if (!code.trim()) return '';
 
     if (lang === 'css') {
@@ -78,7 +75,6 @@ export function formatCode(code, lang) {
     return code;
 }
 
-// 용량 바이트 계산
-export function getByteSize(str) {
+function getByteSize(str) {
     return new Blob([str]).size;
 }
