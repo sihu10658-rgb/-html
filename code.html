@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -130,6 +131,7 @@
 
         <select id="language">
             <option value="auto">자동 감지 (Auto Detect)</option>
+            <option value="html">HTML (통합 최적화)</option>
             <option value="js">JavaScript</option>
             <option value="python">Python</option>
             <option value="css">CSS</option>
@@ -187,22 +189,27 @@
             return 'js';
         }
 
-        // C++ 특징 키워드 검사
+        // HTML 검사
+        if (/<!DOCTYPE\s+html/i.test(code) || /<\/?(html|head|body|div|span|script|style|p|a|h[1-6])\b[^>]*>/i.test(code)) {
+            detectedLangText.innerText = '감지된 언어: HTML';
+            return 'html';
+        }
+        // C++ 검사
         if (/#include|std::|cout|cin|int main\(|#define/i.test(code)) {
             detectedLangText.innerText = '감지된 언어: C++';
             return 'cpp';
         }
-        // Python 특징 키워드 검사
+        // Python 검사
         if (/def\s+\w+\(|import\s+\w+|from\s+\w+|elif\s+|print\(|:\s*$/m.test(code)) {
             detectedLangText.innerText = '감지된 언어: Python';
             return 'python';
         }
-        // CSS 특징 검사 (선택자 및 중괄호 스타일)
+        // CSS 검사
         if (/[\.\#]?\w+\s*\{\s*[\w\-]+\s*:/i.test(code) && !/function|var|let|const/.test(code)) {
             detectedLangText.innerText = '감지된 언어: CSS';
             return 'css';
         }
-        // JavaScript 기본 처리
+        
         detectedLangText.innerText = '감지된 언어: JavaScript (기본)';
         return 'js';
     }
@@ -223,7 +230,38 @@
 
         if (!input.trim()) return;
 
-        if (lang === 'js') {
+        if (lang === 'html') {
+            let code = input;
+
+            // 1) HTML 주석 제거
+            code = code.replace(/<!--[\s\S]*?-->/g, '');
+
+            // 2) <style> 내부 (CSS) 압축
+            code = code.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, cssContent) => {
+                const cleanCss = cssContent
+                    .replace(/\/\*[\s\S]*?\*\//g, '')
+                    .replace(/\s*([\{\}\:\;\,])\s*/g, '$1')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                return `<style>${cleanCss}</style>`;
+            });
+
+            // 3) <script> 내부 (JS) 압축
+            code = code.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (match, jsContent) => {
+                if (match.includes('src=')) return match;
+                const cleanJs = jsContent
+                    .replace(/\/\*[\s\S]*?\*\//g, '')
+                    .replace(/\/\/.*/g, '')
+                    .replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                return `<script>${cleanJs}</script>`;
+            });
+
+            // 4) HTML 태그 사이 공백 및 줄바꿈 제거
+            result = code.replace(/>\s+</g, '><').replace(/\s+/g, ' ');
+
+        } else if (lang === 'js') {
             result = input
                 .replace(/\/\*[\s\S]*?\*\//g, '')
                 .replace(/\/\/.*/g, '')
@@ -270,7 +308,29 @@
 
         if (!input.trim()) return;
 
-        if (lang === 'js' || lang === 'cpp') {
+        if (lang === 'html') {
+            let indent = 0;
+            const selfClosing = /^(img|br|hr|input|meta|link|area|base|col|embed|param|source|track|wbr)$/i;
+            const tokens = input.replace(/>\s*</g, '><').split(/(?=<)|(?<=>)/);
+
+            tokens.forEach(token => {
+                let trimmed = token.trim();
+                if (!trimmed) return;
+
+                if (/^<\//.test(trimmed)) {
+                    indent = Math.max(0, indent - 1);
+                    result += '  '.repeat(indent) + trimmed + '\n';
+                } else if (/^<[^\/!]/.test(trimmed)) {
+                    result += '  '.repeat(indent) + trimmed + '\n';
+                    const tagName = trimmed.match(/^<([^\s>]+)/)?.[1];
+                    if (tagName && !selfClosing.test(tagName) && !trimmed.endsWith('/>')) {
+                        indent++;
+                    }
+                } else {
+                    result += '  '.repeat(indent) + trimmed + '\n';
+                }
+            });
+        } else if (lang === 'js' || lang === 'cpp') {
             let indent = 0;
             const lines = input.split('\n');
             let formatted = [];
