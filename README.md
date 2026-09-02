@@ -1,5 +1,5 @@
 # -html
-# ⚡ Smart Code Optimizer (스마트 코드 최적화 도구)
+#Smart Code Optimizer (스마트 코드 최적화 도구)
 
 > **OS 제약 없이 브라우저에서 바로 실행되는 웹 기반 코드 최적화/정렬 도구**
 
