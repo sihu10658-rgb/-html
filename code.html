@@ -1,1 +1,154 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>스마트 코드 최적화 도구</title><style>:root{--bg-color:#1e1e2e;--card-bg:#2b2b3b;--text-color:#cdd6f4;--sub-text:#a6adc8;--primary-color:#89b4fa;--border-color:#45475a;--accent-color:#a6e3a1}body{font-family:'Consolas','Courier New',monospace;background-color:var(--bg-color);color:var(--text-color);margin:0;padding:20px}.container{max-width:1200px;margin:0 auto;background:var(--card-bg);padding:25px;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.3)}h1{margin-top:0;text-align:center;color:var(--primary-color)}.controls{display:flex;gap:15px;margin-bottom:20px;align-items:center;justify-content:center;flex-wrap:wrap}.lang-status{font-size:13px;color:var(--accent-color);font-weight:700;padding:8px 12px;background-color:#181825;border-radius:6px;border:1px solid var(--border-color)}button,select{padding:10px 16px;font-size:14px;border-radius:6px;border:1px solid var(--border-color);background-color:#313244;color:var(--text-color);cursor:pointer}button{background-color:var(--primary-color);color:#11111b;font-weight:700;border:none;transition:opacity .2s,transform .1s}button:hover{opacity:.85}button:active{transform:scale(.98)}.editor-container{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media (max-width:768px){.editor-container{grid-template-columns:1fr}}.editor-box{display:flex;flex-direction:column}label{font-weight:700;margin-bottom:8px;color:var(--sub-text)}textarea{width:100%;height:450px;padding:12px;font-family:inherit;font-size:13px;border:1px solid var(--border-color);border-radius:6px;resize:vertical;box-sizing:border-box;background-color:#181825;color:var(--text-color);outline:0}textarea:focus{border-color:var(--primary-color)}.stats{margin-top:10px;font-size:13px;color:var(--sub-text)}</style></head><body><div class="container"><h1>스마트 코드 최적화 도구</h1><div class="controls"><div class="lang-status" id="detectedLang">감지된 언어: 자동 감지 중...</div><select id="language"><option value="auto">자동 감지 (Auto Detect)</option><option value="html">HTML</option><option value="js">JavaScript</option><option value="python">Python</option><option value="css">CSS</option><option value="cpp">C++</option></select><button id="btnOptimize" type="button">코드 압축 (Minify)</button><button id="btnFormat" type="button">코드 정렬 (Pretty)</button><button id="btnCopy" type="button">결과 복사</button></div><div class="editor-container"><div class="editor-box"><label for="inputCode">원본 코드</label><textarea id="inputCode" placeholder="코드를 붙여넣으세요..."></textarea><div class="stats" id="inputStats">크기: 0 bytes</div></div><div class="editor-box"><label for="outputCode">최적화된 코드</label><textarea id="outputCode" readonly placeholder="결과가 여기에 표시됩니다..."></textarea><div class="stats" id="outputStats">크기: 0 bytes (절감률: 0%)</div></div></div></div><script>function detectLanguage(e){return e&&e.trim()?/<[a-z][\s\S]*>/i.test(e)?{lang:"html",label:"HTML"}:/#include|std::|cout/i.test(e)?{lang:"cpp",label:"C++"}:/def\s+\w+|import\s+\w+|print\(/i.test(e)?{lang:"python",label:"Python"}:/[\.#]?\w+\s*\{/i.test(e)&&!/function|const|let|var/.test(e)?{lang:"css",label:"CSS"}:{lang:"js",label:"JavaScript"}:{lang:"js",label:"없음"}}function minifyCode(e,t){if(!e||!e.trim())return"";switch(t){case"html":return e.replace(/<!--[\s\S]*?-->/g,"").replace(/>\s+</g,"><").replace(/\s+/g," ");case"css":return e.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\s*([\{\}\:\;\,])\s*/g,"$1").replace(/\s+/g," ");case"js":return e.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*/g,"").replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g,"$1").replace(/\s+/g," ");case"python":return e.split("\n").map(e=>e.replace(/#.*/,"")).filter(e=>""!==e.trim()).join("\n");case"cpp":return e.split("\n").map(e=>e.replace(/\/\/.*/,"").trim()).filter(Boolean).join(" ");default:return e}}function formatCode(e,t){if(!e||!e.trim())return"";if("css"===t)return e.replace(/\s*\{\s*/g," {\n  ").replace(/\s*;\s*/g,";\n  ").replace(/\s*\}\s*/g,"\n}\n\n");if("js"===t||"cpp"===t){let r=0;return e.split("\n").map(e=>{let t=e.trim();if(!t)return"";t.startsWith("}")&&(r=Math.max(0,r-1));let n="  ".repeat(r)+t;return t.endsWith("{")&&r++,n}).filter(Boolean).join("\n")}return e}function getByteSize(e){return new Blob([e||""]).size}document.addEventListener("DOMContentLoaded",()=>{const e=document.getElementById("inputCode"),t=document.getElementById("outputCode"),r=document.getElementById("language"),n=document.getElementById("detectedLang"),t_stats=document.getElementById("inputStats"),o=document.getElementById("outputStats"),a=document.getElementById("btnOptimize"),c=document.getElementById("btnFormat"),u=document.getElementById("btnCopy");function d(){if("auto"!==r.value){const e=r.options[r.selectedIndex].text;return n.innerText=`수동 지정: ${e}`,r.value}const e=detectLanguage(inputArea.value);return n.innerText=`감지된 언어: ${e.label}`,e.lang}function i(){const r=getByteSize(e.value),n=getByteSize(t.value),a=r>0?((r-n)/r*100).toFixed(1):0;o&&(o.innerText=`크기: ${n} bytes (절감률: ${a}%)`)}e.addEventListener("input",()=>{t_stats&&(t_stats.innerText=`크기: ${getByteSize(e.value)} bytes`),d()}),r.addEventListener("change",()=>{d()}),a.addEventListener("click",()=>{const r=d();t.value=minifyCode(e.value,r),i()}),c.addEventListener("click",()=>{const r=d();t.value=formatCode(e.value,r),i()}),u.addEventListener("click",()=>{t.value&&(t.select(),document.execCommand("copy"),alert("클립보드에 복사되었습니다!"))})});</script></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-color-scheme: dark; initial-scale=1.0">
+  <title>스마트 코드 최적화 도구</title>
+  <style>
+    :root { --bg-color: #1e1e2e; --card-bg: #2b2b3b; --text-color: #cdd6f4; --sub-text: #a6adc8; --primary-color: #89b4fa; --border-color: #45475a; --accent-color: #a6e3a1; }
+    body { font-family: 'Consolas', 'Courier New', monospace; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; background: var(--card-bg); padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
+    h1 { margin-top: 0; text-align: center; color: var(--primary-color); }
+    .controls { display: flex; gap: 15px; margin-bottom: 20px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .lang-status { font-size: 13px; color: var(--accent-color); font-weight: bold; padding: 8px 12px; background-color: #181825; border-radius: 6px; border: 1px solid var(--border-color); }
+    select, button { padding: 10px 16px; font-size: 14px; border-radius: 6px; border: 1px solid var(--border-color); background-color: #313244; color: var(--text-color); cursor: pointer; }
+    button { background-color: var(--primary-color); color: #11111b; font-weight: bold; border: none; transition: opacity 0.2s, transform 0.1s; }
+    button:hover { opacity: 0.85; }
+    button:active { transform: scale(0.98); }
+    .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .editor-container { grid-template-columns: 1fr; } }
+    .editor-box { display: flex; flex-direction: column; }
+    label { font-weight: bold; margin-bottom: 8px; color: var(--sub-text); }
+    textarea { width: 100%; height: 450px; padding: 12px; font-family: inherit; font-size: 13px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; box-sizing: border-box; background-color: #181825; color: var(--text-color); outline: none; }
+    textarea:focus { border-color: var(--primary-color); }
+    .stats { margin-top: 10px; font-size: 13px; color: var(--sub-text); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>스마트 코드 최적화 도구</h1>
+    <div class="controls">
+      <div class="lang-status" id="detectedLang">감지된 언어: 자동 감지 중...</div>
+      <select id="language">
+        <option value="auto">자동 감지 (Auto Detect)</option>
+        <option value="html">HTML</option>
+        <option value="js">JavaScript</option>
+        <option value="python">Python</option>
+        <option value="css">CSS</option>
+        <option value="cpp">C++</option>
+      </select>
+      <button id="btnOptimize" type="button">코드 압축 (Minify)</button>
+      <button id="btnFormat" type="button">코드 정렬 (Pretty)</button>
+      <button id="btnCopy" type="button">결과 복사</button>
+    </div>
+    <div class="editor-container">
+      <div class="editor-box">
+        <label for="inputCode">원본 코드</label>
+        <textarea id="inputCode" placeholder="코드를 붙여넣으세요..."></textarea>
+        <div class="stats" id="inputStats">크기: 0 bytes</div>
+      </div>
+      <div class="editor-box">
+        <label for="outputCode">최적화된 코드</label>
+        <textarea id="outputCode" readonly placeholder="결과가 여기에 표시됩니다..."></textarea>
+        <div class="stats" id="outputStats">크기: 0 bytes (절감률: 0%)</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function detectLanguage(code) {
+      if (!code || !code.trim()) return { lang: 'js', label: '없음' };
+      if (/<[a-z][\s\S]*>/i.test(code)) return { lang: 'html', label: 'HTML' };
+      if (/#include|std::|cout/i.test(code)) return { lang: 'cpp', label: 'C++' };
+      if (/def\s+\w+|import\s+\w+|print\(/i.test(code)) return { lang: 'python', label: 'Python' };
+      if (/[\.#]?\w+\s*\{/i.test(code) && !/function|const|let|var/.test(code)) return { lang: 'css', label: 'CSS' };
+      return { lang: 'js', label: 'JavaScript' };
+    }
+
+    function minifyCode(code, lang) {
+      if (!code || !code.trim()) return '';
+      switch (lang) {
+        case 'html': return code.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/\s+/g, ' ');
+        case 'css': return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s*([\{\}\:\;\,])\s*/g, '$1').replace(/\s+/g, ' ');
+        case 'js': return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '').replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1').replace(/\s+/g, ' ');
+        case 'python': return code.split('\n').map(l => l.replace(/#.*/, '')).filter(l => l.trim() !== '').join('\n');
+        case 'cpp': return code.split('\n').map(l => l.replace(/\/\/.*/, '').trim()).filter(Boolean).join(' ');
+        default: return code;
+      }
+    }
+
+    function formatCode(code, lang) {
+      if (!code || !code.trim()) return '';
+      if (lang === 'css') {
+        return code.replace(/\s*\{\s*/g, ' {\n ').replace(/\s*;\s*/g, ';\n ').replace(/\s*\}\s*/g, '\n}\n\n');
+      }
+      if (lang === 'js' || lang === 'cpp') {
+        let indent = 0;
+        return code.split('\n').map(line => {
+          let trimmed = line.trim();
+          if (!trimmed) return '';
+          if (trimmed.startsWith('}')) indent = Math.max(0, indent - 1);
+          let indentedLine = ' '.repeat(indent) + trimmed;
+          if (trimmed.endsWith('{')) indent++;
+          return indentedLine;
+        }).filter(Boolean).join('\n');
+      }
+      return code;
+    }
+
+    function getByteSize(str) { return new Blob([str || '']).size; }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const inputArea = document.getElementById('inputCode');
+      const outputArea = document.getElementById('outputCode');
+      const langSelect = document.getElementById('language');
+      const detectedLangText = document.getElementById('detectedLang');
+      const inputStats = document.getElementById('inputStats');
+      const outputStats = document.getElementById('outputStats');
+      const btnOptimize = document.getElementById('btnOptimize');
+      const btnFormat = document.getElementById('btnFormat');
+      const btnCopy = document.getElementById('btnCopy');
+
+      function getCurrentLanguage() {
+        if (langSelect.value !== 'auto') {
+          const selectedText = langSelect.options[langSelect.selectedIndex].text;
+          detectedLangText.innerText = `수동 지정: ${selectedText}`;
+          return langSelect.value;
+        }
+        const result = detectLanguage(inputArea.value);
+        detectedLangText.innerText = `감지된 언어: ${result.label}`;
+        return result.lang;
+      }
+
+      function updateStats() {
+        const inSize = getByteSize(inputArea.value);
+        const outSize = getByteSize(outputArea.value);
+        const ratio = inSize > 0 ? (((inSize - outSize) / inSize) * 100).toFixed(1) : 0;
+        if (outputStats) { outputStats.innerText = `크기: ${outSize} bytes (절감률: ${ratio}%)`; }
+      }
+
+      inputArea.addEventListener('input', () => {
+        if (inputStats) { inputStats.innerText = `크기: ${getByteSize(inputArea.value)} bytes`; }
+        getCurrentLanguage();
+      });
+      langSelect.addEventListener('change', () => { getCurrentLanguage(); });
+      btnOptimize.addEventListener('click', () => {
+        const lang = getCurrentLanguage();
+        outputArea.value = minifyCode(inputArea.value, lang);
+        updateStats();
+      });
+      btnFormat.addEventListener('click', () => {
+        const lang = getCurrentLanguage();
+        outputArea.value = formatCode(inputArea.value, lang);
+        updateStats();
+      });
+      btnCopy.addEventListener('click', () => {
+        if (!outputArea.value) return;
+        outputArea.select();
+        document.execCommand('copy');
+        alert('클립보드에 복사되었습니다!');
+      });
+    });
+  </script>
+</body>
+</html>
