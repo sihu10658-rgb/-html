@@ -1,11 +1,9 @@
-import { detectLanguage, minifyCode, formatCode, getByteSize } from './optimizer.js';
-
+// app.js (맨 위 import 구문 삭제됨)
 const inputArea = document.getElementById('inputCode');
 const outputArea = document.getElementById('outputCode');
 const langSelect = document.getElementById('language');
 const detectedLangText = document.getElementById('detectedLang');
 
-// 현재 언어 상태 가져오기 (수동 선택 시 자동 감지 차단)
 function getCurrentLanguage() {
     if (langSelect.value !== 'auto') {
         const selectedText = langSelect.options[langSelect.selectedIndex].text;
@@ -25,18 +23,15 @@ function updateStats() {
     document.getElementById('outputStats').innerText = `크기: ${outSize} bytes (절감률: ${ratio}%)`;
 }
 
-// 입력 이벤트
 inputArea.addEventListener('input', () => {
     document.getElementById('inputStats').innerText = `크기: ${getByteSize(inputArea.value)} bytes`;
     getCurrentLanguage();
 });
 
-// 드롭다운 변경 이벤트
 langSelect.addEventListener('change', () => {
     getCurrentLanguage();
 });
 
-// 버튼 클릭 이벤트
 document.getElementById('btnOptimize').addEventListener('click', () => {
     const lang = getCurrentLanguage();
     outputArea.value = minifyCode(inputArea.value, lang);
