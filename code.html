@@ -65,7 +65,7 @@
       return { lang: 'js', label: 'JavaScript' };
     }
 
-    // 1. 이스케이프 문자 및 백틱 문자열 완벽 보호 토큰 파서
+    // 이스케이프 문자 및 경계값 오류를 방어하는 안전한 토큰 파서
     function removeCommentsAndSafeMinify(code, isJS = true) {
       let out = '';
       let i = 0;
@@ -124,7 +124,6 @@
       if (!code || !code.trim()) return '';
       switch (lang) {
         case 'html':
-          // 2. HTML 속성 붙음 현상 방지를 위해 무차별 공백 압축 대신 태그 사이 공백만 제거
           return code
             .replace(/<!--[\s\S]*?-->/g, '')
             .replace(/>\s+</g, '><')
@@ -141,7 +140,6 @@
         }
         
         case 'python': {
-          // 3. 파이썬 삼중 따옴표(멀티라인 문자열) 보호 처리
           let lines = code.split('\n');
           let inMultiString = null;
           let resultLines = [];
@@ -170,7 +168,6 @@
         }
         
         case 'cpp': {
-          // 4. C++ 전처리기 및 줄바꿈 구조 유지 압축
           let clean = removeCommentsAndSafeMinify(code, true);
           return clean.split('\n')
             .map(l => l.trim())
