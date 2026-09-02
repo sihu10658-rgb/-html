@@ -1,11 +1,67 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>스마트 코드 최적화 도구</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --card-bg: #2b2b3b;
+            --text-color: #cdd6f4;
+            --sub-text: #a6adc8;
+            --primary-color: #89b4fa;
+            --border-color: #45475a;
+            --accent-color: #a6e3a1;
+        }
+        body {
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        h1 { margin-top: 0; text-align: center; color: var(--primary-color); }
+        .controls {
+            display: flex; gap: 15px; margin-bottom: 20px;
+            align-items: center; justify-content: center; flex-wrap: wrap;
+        }
+        .lang-status {
+            font-size: 13px; color: var(--accent-color); font-weight: bold;
+            padding: 8px 12px; background-color: #181825; border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        select, button {
+            padding: 10px 16px; font-size: 14px; border-radius: 6px;
+            border: 1px solid var(--border-color); background-color: #313244;
+            color: var(--text-color); cursor: pointer;
+        }
+        button {
+            background-color: var(--primary-color); color: #11111b; font-weight: bold;
+            border: none; transition: opacity 0.2s, transform 0.1s;
+        }
+        button:hover { opacity: 0.85; }
+        button:active { transform: scale(0.98); }
+        .editor-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .editor-container { grid-template-columns: 1fr; } }
+        .editor-box { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 8px; color: var(--sub-text); }
+        textarea {
+            width: 100%; height: 450px; padding: 12px; font-family: inherit; font-size: 13px;
+            border: 1px solid var(--border-color); border-radius: 6px; resize: vertical;
+            box-sizing: border-box; background-color: #181825; color: var(--text-color); outline: none;
+        }
+        textarea:focus { border-color: var(--primary-color); }
+        .stats { margin-top: 10px; font-size: 13px; color: var(--sub-text); }
+    </style>
 </head>
 <body>
 
@@ -24,9 +80,9 @@
             <option value="cpp">C++</option>
         </select>
 
-        <button id="btnOptimize">코드 압축 (Minify)</button>
-        <button id="btnFormat">코드 정렬 (Pretty)</button>
-        <button id="btnCopy">결과 복사</button>
+        <button id="btnOptimize" type="button">코드 압축 (Minify)</button>
+        <button id="btnFormat" type="button">코드 정렬 (Pretty)</button>
+        <button id="btnCopy" type="button">결과 복사</button>
     </div>
 
     <div class="editor-container">
@@ -45,9 +101,8 @@
 </div>
 
 <script>
-// --- 1. 최적화 엔진 (Optimizer Logic) ---
 function detectLanguage(code) {
-    if (!code.trim()) return { lang: 'js', label: '없음' };
+    if (!code || !code.trim()) return { lang: 'js', label: '없음' };
     if (/<[a-z][\s\S]*>/i.test(code)) return { lang: 'html', label: 'HTML' };
     if (/#include|std::|cout/i.test(code)) return { lang: 'cpp', label: 'C++' };
     if (/def\s+\w+|import\s+\w+|print\(/i.test(code)) return { lang: 'python', label: 'Python' };
@@ -56,57 +111,28 @@ function detectLanguage(code) {
 }
 
 function minifyCode(code, lang) {
-    if (!code.trim()) return '';
-
+    if (!code || !code.trim()) return '';
     switch (lang) {
         case 'html':
-            return code
-                .replace(/<!--[\s\S]*?-->/g, '')
-                .replace(/>\s+</g, '><')
-                .replace(/\s+/g, ' ');
-
+            return code.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/\s+/g, ' ');
         case 'css':
-            return code
-                .replace(/\/\*[\s\S]*?\*\//g, '')
-                .replace(/\s*([\{\}\:\;\,])\s*/g, '$1')
-                .replace(/\s+/g, ' ');
-
+            return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s*([\{\}\:\;\,])\s*/g, '$1').replace(/\s+/g, ' ');
         case 'js':
-            return code
-                .replace(/\/\*[\s\S]*?\*\//g, '')
-                .replace(/\/\/.*/g, '')
-                .replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1')
-                .replace(/\s+/g, ' ');
-
+            return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '').replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1').replace(/\s+/g, ' ');
         case 'python':
-            return code
-                .split('\n')
-                .map(line => line.replace(/#.*/, ''))
-                .filter(line => line.trim() !== '')
-                .join('\n');
-
+            return code.split('\n').map(l => l.replace(/#.*/, '')).filter(l => l.trim() !== '').join('\n');
         case 'cpp':
-            return code
-                .split('\n')
-                .map(line => line.replace(/\/\/.*/, '').trim())
-                .filter(Boolean)
-                .join(' ');
-
+            return code.split('\n').map(l => l.replace(/\/\/.*/, '').trim()).filter(Boolean).join(' ');
         default:
             return code;
     }
 }
 
 function formatCode(code, lang) {
-    if (!code.trim()) return '';
-
+    if (!code || !code.trim()) return '';
     if (lang === 'css') {
-        return code
-            .replace(/\s*\{\s*/g, ' {\n  ')
-            .replace(/\s*;\s*/g, ';\n  ')
-            .replace(/\s*\}\s*/g, '\n}\n\n');
+        return code.replace(/\s*\{\s*/g, ' {\n  ').replace(/\s*;\s*/g, ';\n  ').replace(/\s*\}\s*/g, '\n}\n\n');
     }
-
     if (lang === 'js' || lang === 'cpp') {
         let indent = 0;
         return code.split('\n').map(line => {
@@ -118,20 +144,23 @@ function formatCode(code, lang) {
             return indentedLine;
         }).filter(Boolean).join('\n');
     }
-
     return code;
 }
 
 function getByteSize(str) {
-    return new Blob([str]).size;
+    return new Blob([str || '']).size;
 }
 
-// --- 2. UI 바인딩 및 이벤트 처리 (App Logic) ---
 document.addEventListener('DOMContentLoaded', () => {
     const inputArea = document.getElementById('inputCode');
     const outputArea = document.getElementById('outputCode');
     const langSelect = document.getElementById('language');
     const detectedLangText = document.getElementById('detectedLang');
+    const inputStats = document.getElementById('inputStats');
+    const outputStats = document.getElementById('outputStats');
+    const btnOptimize = document.getElementById('btnOptimize');
+    const btnFormat = document.getElementById('btnFormat');
+    const btnCopy = document.getElementById('btnCopy');
 
     function getCurrentLanguage() {
         if (langSelect.value !== 'auto') {
@@ -139,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
             detectedLangText.innerText = `수동 지정: ${selectedText}`;
             return langSelect.value;
         }
-
         const result = detectLanguage(inputArea.value);
         detectedLangText.innerText = `감지된 언어: ${result.label}`;
         return result.lang;
@@ -149,11 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const inSize = getByteSize(inputArea.value);
         const outSize = getByteSize(outputArea.value);
         const ratio = inSize > 0 ? (((inSize - outSize) / inSize) * 100).toFixed(1) : 0;
-        document.getElementById('outputStats').innerText = `크기: ${outSize} bytes (절감률: ${ratio}%)`;
+        if (outputStats) {
+            outputStats.innerText = `크기: ${outSize} bytes (절감률: ${ratio}%)`;
+        }
     }
 
     inputArea.addEventListener('input', () => {
-        document.getElementById('inputStats').innerText = `크기: ${getByteSize(inputArea.value)} bytes`;
+        if (inputStats) {
+            inputStats.innerText = `크기: ${getByteSize(inputArea.value)} bytes`;
+        }
         getCurrentLanguage();
     });
 
@@ -161,19 +193,19 @@ document.addEventListener('DOMContentLoaded', () => {
         getCurrentLanguage();
     });
 
-    document.getElementById('btnOptimize').addEventListener('click', () => {
+    btnOptimize.addEventListener('click', () => {
         const lang = getCurrentLanguage();
         outputArea.value = minifyCode(inputArea.value, lang);
         updateStats();
     });
 
-    document.getElementById('btnFormat').addEventListener('click', () => {
+    btnFormat.addEventListener('click', () => {
         const lang = getCurrentLanguage();
         outputArea.value = formatCode(inputArea.value, lang);
         updateStats();
     });
 
-    document.getElementById('btnCopy').addEventListener('click', () => {
+    btnCopy.addEventListener('click', () => {
         if (!outputArea.value) return;
         outputArea.select();
         document.execCommand('copy');
