@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-color-scheme: dark; initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 코드 최적화 도구</title>
   <style>
     :root { --bg-color: #1e1e2e; --card-bg: #2b2b3b; --text-color: #cdd6f4; --sub-text: #a6adc8; --primary-color: #89b4fa; --border-color: #45475a; --accent-color: #a6e3a1; }
@@ -65,22 +65,128 @@
       return { lang: 'js', label: 'JavaScript' };
     }
 
+    // 1. 이스케이프 문자 및 백틱 문자열 완벽 보호 토큰 파서
+    function removeCommentsAndSafeMinify(code, isJS = true) {
+      let out = '';
+      let i = 0;
+      let inString = null;
+      let inLineComment = false;
+      let inBlockComment = false;
+
+      while (i < code.length) {
+        let c = code[i];
+        let next = code[i+1] || '';
+
+        if (inLineComment) {
+          if (c === '\n') inLineComment = false;
+          i++;
+          continue;
+        }
+        if (inBlockComment) {
+          if (c === '*' && next === '/') {
+            inBlockComment = false;
+            i += 2;
+          } else {
+            i++;
+          }
+          continue;
+        }
+        if (inString) {
+          if (c === '\\') { 
+            out += c; 
+            if (i + 1 < code.length) { 
+              out += code[i+1]; 
+              i += 2; 
+            } else { 
+              i++; 
+            } 
+            continue; 
+          }
+          if (c === inString) { 
+            inString = null; 
+          }
+          out += c;
+          i++;
+          continue;
+        }
+
+        if (isJS && c === '/' && next === '/') { inLineComment = true; i += 2; continue; }
+        if (c === '/' && next === '*') { inBlockComment = true; i += 2; continue; }
+        if (c === '"' || c === "'" || c === '`') { inString = c; out += c; i++; continue; }
+
+        out += c;
+        i++;
+      }
+      return out;
+    }
+
     function minifyCode(code, lang) {
       if (!code || !code.trim()) return '';
       switch (lang) {
-        case 'html': return code.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/\s+/g, ' ');
-        case 'css': return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s*([\{\}\:\;\,])\s*/g, '$1').replace(/\s+/g, ' ');
-        case 'js': return code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '').replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1').replace(/\s+/g, ' ');
-        case 'python': return code.split('\n').map(l => l.replace(/#.*/, '')).filter(l => l.trim() !== '').join('\n');
-        case 'cpp': return code.split('\n').map(l => l.replace(/\/\/.*/, '').trim()).filter(Boolean).join(' ');
-        default: return code;
+        case 'html':
+          // 2. HTML 속성 붙음 현상 방지를 위해 무차별 공백 압축 대신 태그 사이 공백만 제거
+          return code
+            .replace(/<!--[\s\S]*?-->/g, '')
+            .replace(/>\s+</g, '><')
+            .trim();
+        
+        case 'css': {
+          let clean = removeCommentsAndSafeMinify(code, true);
+          return clean.replace(/\s*([\{\}\:\;\,])\s*/g, '$1').replace(/\s+/g, ' ');
+        }
+        
+        case 'js': {
+          let clean = removeCommentsAndSafeMinify(code, true);
+          return clean.replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1').replace(/\s+/g, ' ');
+        }
+        
+        case 'python': {
+          // 3. 파이썬 삼중 따옴표(멀티라인 문자열) 보호 처리
+          let lines = code.split('\n');
+          let inMultiString = null;
+          let resultLines = [];
+          
+          for (let line of lines) {
+            let trimmed = line.trim();
+            if (!inMultiString) {
+              if (trimmed.startsWith('"""')) { inMultiString = '"""'; if (trimmed.endsWith('"""') && trimmed.length > 3) inMultiString = null; resultLines.push(line); continue; }
+              if (trimmed.startsWith("'''")) { inMultiString = "'''"; if (trimmed.endsWith("'''") && trimmed.length > 3) inMultiString = null; resultLines.push(line); continue; }
+            } else {
+              if (line.includes(inMultiString)) { inMultiString = null; }
+              resultLines.push(line);
+              continue;
+            }
+
+            let hashIdx = line.indexOf('#');
+            if (hashIdx !== -1) {
+              let sub = line.substring(0, hashIdx);
+              let singles = (sub.match(/'/g) || []).length;
+              let doubles = (sub.match(/"/g) || []).length;
+              if (singles % 2 === 0 && doubles % 2 === 0) line = sub;
+            }
+            if (line.trim() !== '') resultLines.push(line);
+          }
+          return resultLines.join('\n');
+        }
+        
+        case 'cpp': {
+          // 4. C++ 전처리기 및 줄바꿈 구조 유지 압축
+          let clean = removeCommentsAndSafeMinify(code, true);
+          return clean.split('\n')
+            .map(l => l.trim())
+            .filter(Boolean)
+            .join('\n');
+        }
+        
+        default:
+          return code;
       }
     }
 
     function formatCode(code, lang) {
       if (!code || !code.trim()) return '';
       if (lang === 'css') {
-        return code.replace(/\s*\{\s*/g, ' {\n ').replace(/\s*;\s*/g, ';\n ').replace(/\s*\}\s*/g, '\n}\n\n');
+        return code.replace(/\s*\{\s*/g, ' {\n  ').replace(/\s*;\s*/g, ';\n  ').replace(/\s*\}\s*/g, '\n}\n\n');
       }
       if (lang === 'js' || lang === 'cpp') {
         let indent = 0;
@@ -88,7 +194,7 @@
           let trimmed = line.trim();
           if (!trimmed) return '';
           if (trimmed.startsWith('}')) indent = Math.max(0, indent - 1);
-          let indentedLine = ' '.repeat(indent) + trimmed;
+          let indentedLine = '  '.repeat(indent) + trimmed;
           if (trimmed.endsWith('{')) indent++;
           return indentedLine;
         }).filter(Boolean).join('\n');
