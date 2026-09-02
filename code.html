@@ -1,125 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>스마트 멀티 언어 코드 최적화 도구</title>
-    <style>
-        :root {
-            --bg-color: #1e1e2e;
-            --card-bg: #2b2b3b;
-            --text-color: #cdd6f4;
-            --primary-color: #89b4fa;
-            --border-color: #45475a;
-            --accent-color: #a6e3a1;
-        }
-
-        body {
-            font-family: 'Consolas', 'Courier New', monospace;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-
-        h1 {
-            margin-top: 0;
-            text-align: center;
-            color: var(--primary-color);
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .lang-status {
-            font-size: 13px;
-            color: var(--accent-color);
-            font-weight: bold;
-            padding: 8px 12px;
-            background-color: #181825;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-        }
-
-        select, button {
-            padding: 10px 16px;
-            font-size: 14px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background-color: #313244;
-            color: var(--text-color);
-            cursor: pointer;
-        }
-
-        button {
-            background-color: var(--primary-color);
-            color: #11111b;
-            font-weight: bold;
-            border: none;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.85;
-        }
-
-        .editor-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .editor-container { grid-template-columns: 1fr; }
-        }
-
-        .editor-box {
-            display: flex;
-            flex-direction: column;
-        }
-
-        label {
-            font-weight: bold;
-            margin-bottom: 8px;
-            color: #a6adc8;
-        }
-
-        textarea {
-            width: 100%;
-            height: 450px;
-            padding: 12px;
-            font-family: inherit;
-            font-size: 13px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            resize: vertical;
-            box-sizing: border-box;
-            background-color: #181825;
-            color: #cdd6f4;
-        }
-
-        .stats {
-            margin-top: 10px;
-            font-size: 13px;
-            color: #a6adc8;
-        }
-    </style>
+    <title>스마트 코드 최적화 도구</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -131,22 +16,22 @@
 
         <select id="language">
             <option value="auto">자동 감지 (Auto Detect)</option>
-            <option value="html">HTML (통합 최적화)</option>
+            <option value="html">HTML</option>
             <option value="js">JavaScript</option>
             <option value="python">Python</option>
             <option value="css">CSS</option>
             <option value="cpp">C++</option>
         </select>
 
-        <button onclick="optimizeCode()">코드 압축 (Minify)</button>
-        <button onclick="formatCode()">코드 정렬 (Pretty)</button>
-        <button onclick="copyToClipboard()">결과 복사</button>
+        <button id="btnOptimize">코드 압축 (Minify)</button>
+        <button id="btnFormat">코드 정렬 (Pretty)</button>
+        <button id="btnCopy">결과 복사</button>
     </div>
 
     <div class="editor-container">
         <div class="editor-box">
             <label for="inputCode">원본 코드</label>
-            <textarea id="inputCode" placeholder="코드를 붙여넣으면 자동으로 언어를 분석합니다..."></textarea>
+            <textarea id="inputCode" placeholder="코드를 붙여넣으세요..."></textarea>
             <div class="stats" id="inputStats">크기: 0 bytes</div>
         </div>
 
@@ -158,224 +43,6 @@
     </div>
 </div>
 
-<script>
-    const inputArea = document.getElementById('inputCode');
-    const outputArea = document.getElementById('outputCode');
-    const langSelect = document.getElementById('language');
-    const detectedLangText = document.getElementById('detectedLang');
-
-    // 입력 시 실시간 감지 및 바이트 수 업데이트
-    inputArea.addEventListener('input', () => {
-        const code = inputArea.value;
-        document.getElementById('inputStats').innerText = `크기: ${new Blob([code]).size} bytes`;
-        
-        if (langSelect.value === 'auto') {
-            detectLanguage(code);
-        }
-    });
-
-    langSelect.addEventListener('change', () => {
-        if (langSelect.value !== 'auto') {
-            detectedLangText.innerText = `수동 지정: ${langSelect.options[langSelect.selectedIndex].text}`;
-        } else {
-            detectLanguage(inputArea.value);
-        }
-    });
-
-    // 언어 자동 판별 로직
-    function detectLanguage(code) {
-        if (!code.trim()) {
-            detectedLangText.innerText = '감지된 언어: 없음';
-            return 'js';
-        }
-
-        // HTML 검사
-        if (/<!DOCTYPE\s+html/i.test(code) || /<\/?(html|head|body|div|span|script|style|p|a|h[1-6])\b[^>]*>/i.test(code)) {
-            detectedLangText.innerText = '감지된 언어: HTML';
-            return 'html';
-        }
-        // C++ 검사
-        if (/#include|std::|cout|cin|int main\(|#define/i.test(code)) {
-            detectedLangText.innerText = '감지된 언어: C++';
-            return 'cpp';
-        }
-        // Python 검사
-        if (/def\s+\w+\(|import\s+\w+|from\s+\w+|elif\s+|print\(|:\s*$/m.test(code)) {
-            detectedLangText.innerText = '감지된 언어: Python';
-            return 'python';
-        }
-        // CSS 검사
-        if (/[\.\#]?\w+\s*\{\s*[\w\-]+\s*:/i.test(code) && !/function|var|let|const/.test(code)) {
-            detectedLangText.innerText = '감지된 언어: CSS';
-            return 'css';
-        }
-        
-        detectedLangText.innerText = '감지된 언어: JavaScript (기본)';
-        return 'js';
-    }
-
-    // 현재 대상 언어 가져오기
-    function getTargetLanguage() {
-        if (langSelect.value === 'auto') {
-            return detectLanguage(inputArea.value);
-        }
-        return langSelect.value;
-    }
-
-    // 1. 코드 압축
-    function optimizeCode() {
-        const input = inputArea.value;
-        const lang = getTargetLanguage();
-        let result = '';
-
-        if (!input.trim()) return;
-
-        if (lang === 'html') {
-            let code = input;
-
-            // 1) HTML 주석 제거
-            code = code.replace(/<!--[\s\S]*?-->/g, '');
-
-            // 2) <style> 내부 (CSS) 압축
-            code = code.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (match, cssContent) => {
-                const cleanCss = cssContent
-                    .replace(/\/\*[\s\S]*?\*\//g, '')
-                    .replace(/\s*([\{\}\:\;\,])\s*/g, '$1')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                return `<style>${cleanCss}</style>`;
-            });
-
-            // 3) <script> 내부 (JS) 압축
-            code = code.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, (match, jsContent) => {
-                if (match.includes('src=')) return match;
-                const cleanJs = jsContent
-                    .replace(/\/\*[\s\S]*?\*\//g, '')
-                    .replace(/\/\/.*/g, '')
-                    .replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                return `<script>${cleanJs}</script>`;
-            });
-
-            // 4) HTML 태그 사이 공백 및 줄바꿈 제거
-            result = code.replace(/>\s+</g, '><').replace(/\s+/g, ' ');
-
-        } else if (lang === 'js') {
-            result = input
-                .replace(/\/\*[\s\S]*?\*\//g, '')
-                .replace(/\/\/.*/g, '')
-                .replace(/\s*([\{\}\(\)\=\+\-\*\/\:\;\,\<\>])\s*/g, '$1')
-                .replace(/\s+/g, ' ');
-        } else if (lang === 'python') {
-            result = input
-                .split('\n')
-                .map(line => line.replace(/#.*/, ''))
-                .filter(line => line.trim() !== '')
-                .join('\n');
-        } else if (lang === 'css') {
-            result = input
-                .replace(/\/\*[\s\S]*?\*\//g, '')
-                .replace(/\s*([\{\}\:\;\,])\s*/g, '$1')
-                .replace(/\s+/g, ' ');
-        } else if (lang === 'cpp') {
-            const lines = input.split('\n');
-            let processed = [];
-
-            for (let line of lines) {
-                let cleanLine = line.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '').trim();
-                if (cleanLine) {
-                    if (cleanLine.startsWith('#')) {
-                        processed.push(cleanLine);
-                    } else {
-                        cleanLine = cleanLine.replace(/\s*([\{\}\(\)\=\+\-\*\/\;\,\<\>])\s*/g, '$1');
-                        processed.push(cleanLine);
-                    }
-                }
-            }
-            result = processed.join('');
-        }
-
-        outputArea.value = result.trim();
-        updateStats();
-    }
-
-    // 2. 코드 정렬
-    function formatCode() {
-        const input = inputArea.value;
-        const lang = getTargetLanguage();
-        let result = '';
-
-        if (!input.trim()) return;
-
-        if (lang === 'html') {
-            let indent = 0;
-            const selfClosing = /^(img|br|hr|input|meta|link|area|base|col|embed|param|source|track|wbr)$/i;
-            const tokens = input.replace(/>\s*</g, '><').split(/(?=<)|(?<=>)/);
-
-            tokens.forEach(token => {
-                let trimmed = token.trim();
-                if (!trimmed) return;
-
-                if (/^<\//.test(trimmed)) {
-                    indent = Math.max(0, indent - 1);
-                    result += '  '.repeat(indent) + trimmed + '\n';
-                } else if (/^<[^\/!]/.test(trimmed)) {
-                    result += '  '.repeat(indent) + trimmed + '\n';
-                    const tagName = trimmed.match(/^<([^\s>]+)/)?.[1];
-                    if (tagName && !selfClosing.test(tagName) && !trimmed.endsWith('/>')) {
-                        indent++;
-                    }
-                } else {
-                    result += '  '.repeat(indent) + trimmed + '\n';
-                }
-            });
-        } else if (lang === 'js' || lang === 'cpp') {
-            let indent = 0;
-            const lines = input.split('\n');
-            let formatted = [];
-
-            lines.forEach(line => {
-                let trimmed = line.trim();
-                if (!trimmed) return;
-
-                if (trimmed.startsWith('}')) indent = Math.max(0, indent - 1);
-                formatted.push('  '.repeat(indent) + trimmed);
-                if (trimmed.endsWith('{') && !trimmed.startsWith('//')) indent++;
-            });
-            result = formatted.join('\n');
-        } else if (lang === 'css') {
-            result = input
-                .replace(/\s*\{\s*/g, ' {\n  ')
-                .replace(/\s*;\s*/g, ';\n  ')
-                .replace(/\s*\}\s*/g, '\n}\n\n');
-        } else if (lang === 'python') {
-            result = input
-                .split('\n')
-                .filter((line, index, arr) => line.trim() !== '' || (arr[index - 1] && arr[index - 1].trim() !== ''))
-                .join('\n');
-        }
-
-        outputArea.value = result.trim();
-        updateStats();
-    }
-
-    function updateStats() {
-        const inSize = new Blob([inputArea.value]).size;
-        const outSize = new Blob([outputArea.value]).size;
-        let reduction = inSize > 0 ? (((inSize - outSize) / inSize) * 100).toFixed(1) : 0;
-
-        document.getElementById('outputStats').innerText = 
-            `크기: ${outSize} bytes (절감률: ${reduction}% ${reduction > 0 ? '감소' : ''})`;
-    }
-
-    function copyToClipboard() {
-        if (!outputArea.value) return;
-        outputArea.select();
-        document.execCommand('copy');
-        alert('최적화된 코드가 클립보드에 복사되었습니다.');
-    }
-</script>
-
+<script type="module" src="./app.js"></script>
 </body>
 </html>
