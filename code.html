@@ -65,7 +65,6 @@
       return { lang: 'js', label: 'JavaScript' };
     }
 
-    // 이스케이프 문자 및 경계값 오류를 방어하는 안전한 토큰 파서
     function removeCommentsAndSafeMinify(code, isJS = true) {
       let out = '';
       let i = 0;
@@ -123,11 +122,23 @@
     function minifyCode(code, lang) {
       if (!code || !code.trim()) return '';
       switch (lang) {
-        case 'html':
-          return code
-            .replace(/<!--[\s\S]*?-->/g, '')
+        case 'html': {
+          // HTML 주석 제거
+          let clean = code.replace(/<!--[\s\S]*?-->/g, '');
+          // CSS 스타일 태그 블록 재귀 압축
+          clean = clean.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, open, cssContent, close) => {
+            return open + minifyCode(cssContent, 'css') + close;
+          });
+          // JS 스크립트 태그 블록 재귀 압축 (외부 스크립트 제외)
+          clean = clean.replace(/(<script[^>]*>)([\s\S]*?)(<\/script>)/gi, (m, open, jsContent, close) => {
+            if (/src\s*=/i.test(open)) return m;
+            return open + minifyCode(jsContent, 'js') + close;
+          });
+          return clean
             .replace(/>\s+</g, '><')
+            .replace(/\s+/g, ' ')
             .trim();
+        }
         
         case 'css': {
           let clean = removeCommentsAndSafeMinify(code, true);
@@ -245,11 +256,16 @@
         outputArea.value = formatCode(inputArea.value, lang);
         updateStats();
       });
-      btnCopy.addEventListener('click', () => {
+      btnCopy.addEventListener('click', async () => {
         if (!outputArea.value) return;
-        outputArea.select();
-        document.execCommand('copy');
-        alert('클립보드에 복사되었습니다!');
+        try {
+          await navigator.clipboard.writeText(outputArea.value);
+          alert('클립보드에 복사되었습니다!');
+        } catch (err) {
+          outputArea.select();
+          document.execCommand('copy');
+          alert('클립보드에 복사되었습니다!');
+        }
       });
     });
   </script>
