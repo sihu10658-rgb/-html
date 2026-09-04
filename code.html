@@ -1,10 +1,4 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>스마트 코드 최적화 도구</title>
-  <style>
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>스마트 코드 최적화 도구</title><style>
     :root { --bg-color: #1e1e2e; --card-bg: #2b2b3b; --text-color: #cdd6f4; --sub-text: #a6adc8; --primary-color: #89b4fa; --border-color: #45475a; --accent-color: #a6e3a1; }
     body { font-family: 'Consolas', 'Courier New', monospace; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; }
     .container { max-width: 1200px; margin: 0 auto; background: var(--card-bg); padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); }
@@ -22,40 +16,7 @@
     textarea { width: 100%; height: 450px; padding: 12px; font-family: inherit; font-size: 13px; border: 1px solid var(--border-color); border-radius: 6px; resize: vertical; box-sizing: border-box; background-color: #181825; color: var(--text-color); outline: none; }
     textarea:focus { border-color: var(--primary-color); }
     .stats { margin-top: 10px; font-size: 13px; color: var(--sub-text); }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>스마트 코드 최적화 도구</h1>
-    <div class="controls">
-      <div class="lang-status" id="detectedLang">감지된 언어: 자동 감지 중...</div>
-      <select id="language">
-        <option value="auto">자동 감지 (Auto Detect)</option>
-        <option value="html">HTML</option>
-        <option value="js">JavaScript</option>
-        <option value="python">Python</option>
-        <option value="css">CSS</option>
-        <option value="cpp">C++</option>
-      </select>
-      <button id="btnOptimize" type="button">코드 압축 (Minify)</button>
-      <button id="btnFormat" type="button">코드 정렬 (Pretty)</button>
-      <button id="btnCopy" type="button">결과 복사</button>
-    </div>
-    <div class="editor-container">
-      <div class="editor-box">
-        <label for="inputCode">원본 코드</label>
-        <textarea id="inputCode" placeholder="코드를 붙여넣으세요..."></textarea>
-        <div class="stats" id="inputStats">크기: 0 bytes</div>
-      </div>
-      <div class="editor-box">
-        <label for="outputCode">최적화된 코드</label>
-        <textarea id="outputCode" readonly placeholder="결과가 여기에 표시됩니다..."></textarea>
-        <div class="stats" id="outputStats">크기: 0 bytes (절감률: 0%)</div>
-      </div>
-    </div>
-  </div>
-
-  <script>
+  </style></head><body><div class="container"><h1>스마트 코드 최적화 도구</h1><div class="controls"><div class="lang-status" id="detectedLang">감지된 언어: 자동 감지 중...</div><select id="language"><option value="auto">자동 감지 (Auto Detect)</option><option value="html">HTML</option><option value="js">JavaScript</option><option value="python">Python</option><option value="css">CSS</option><option value="cpp">C++</option></select><button id="btnOptimize" type="button">코드 압축 (Minify)</button><button id="btnFormat" type="button">코드 정렬 (Pretty)</button><button id="btnCopy" type="button">결과 복사</button></div><div class="editor-container"><div class="editor-box"><label for="inputCode">원본 코드</label><textarea id="inputCode" placeholder="코드를 붙여넣으세요..."></textarea><div class="stats" id="inputStats">크기: 0 bytes</div></div><div class="editor-box"><label for="outputCode">최적화된 코드</label><textarea id="outputCode" readonly placeholder="결과가 여기에 표시됩니다..."></textarea><div class="stats" id="outputStats">크기: 0 bytes (절감률: 0%)</div></div></div></div><script>
     function detectLanguage(code) {
       if (!code || !code.trim()) return { lang: 'js', label: '없음' };
       if (/<[a-z][\s\S]*>/i.test(code)) return { lang: 'html', label: 'HTML' };
@@ -124,7 +85,7 @@
       switch (lang) {
         case 'html': {
           // HTML 주석 제거
-          let clean = code.replace(/<!--[\s\S]*?-->/g, '');
+          let clean = code.replace(//g, '');
           // CSS 스타일 태그 블록 재귀 압축
           clean = clean.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, open, cssContent, close) => {
             return open + minifyCode(cssContent, 'css') + close;
@@ -268,6 +229,4 @@
         }
       });
     });
-  </script>
-</body>
-</html>
+  </script></body></html>
