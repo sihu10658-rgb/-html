@@ -19,3 +19,95 @@
     }
     return out;
   }
+
+  function minifyTokens(code, lineComments=true) {
+    const source=stripCComments(code,lineComments);
+    let out='', quote=null, pendingSpace=false;
+    const word=c=>!!c&&/[\w$]/.test(c);
+    for (let i=0;i<source.length;i++) {
+      const c=source[i];
+      if (quote) {
+        out+=c;
+        if (c==='\\'&&i+1<source.length) out+=source[++i];
+        else if (c===quote) quote=null;
+        continue;
+      }
+      if (c==='"'||c==="'"||c==='`') {
+        if (pendingSpace&&word(out[out.length-1])) out+=' ';
+        pendingSpace=false;quote=c;out+=c;continue;
+      }
+      if (/\s/.test(c)) {pendingSpace=true;continue;}
+      const prev=out[out.length-1];
+      // Keep separators between identifier/number tokens and avoid merging ++, --, comments, or shifts.
+      const joined=prev+c;
+      const mustSeparate=(pendingSpace&&word(prev)&&word(c))||
+        (pendingSpace&&['++','--','//','/*','>>','<<','&&','||','==','!=','<=','>=','+=','-=','*=','/=','=>','...','??','?.'].includes(joined));
+      if (mustSeparate) out+=' ';
+      pendingSpace=false;out+=c;
+    }
+    return out.trim();
+  }
+
+  function minifyCSS(code) {
+    // Retain meaningful selector/declaration whitespace; remove comments and redundant whitespace around safe delimiters.
+    return stripCComments(code,false).replace(/\s+/g,' ').replace(/\s*([{};,])\s*/g,'$1').trim();
+  }
+
+  function minifyCode(code,lang) {
+    if (!code||!code.trim()) return '';
+    if (lang==='html') {
+      let clean=code.replace(//g,'');
+      clean=clean.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi,(_,open,body,close)=>open+minifyCSS(body)+close);
+      clean=clean.replace(/(<script\b(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script\s*>)/gi,(_,open,body,close)=>open+minifyTokens(body,true)+close);
+      // Remove whitespace only between tags; preserve text-node whitespace.
+      return clean.replace(/>\s+</g,'><').trim();
+    }
+    if (lang==='css') return minifyCSS(code);
+    if (lang==='js'||lang==='c'||lang==='cpp'||lang==='go') return minifyTokens(code,true);
+    if (lang==='python') {
+      // Python indentation/newlines are syntax: do not flatten them or strip # inside strings.
+      return code.split('\n').filter(line=>line.trim()).join('\n');
+    }
+    return code;
+  }
+
+  function formatCode(code,lang) {
+    if (!code||!code.trim()) return '';
+    if (lang==='css') return code.replace(/\s*\{\s*/g,' {\n  ').replace(/\s*;\s*/g,';\n  ').replace(/\s*\}\s*/g,'\n}\n\n').trim();
+    if (['js','c','cpp','go'].includes(lang)) {
+      let indent=0;
+      return code.split('\n').map(line=>{
+        const s=line.trim();if(!s)return '';
+        if(s.startsWith('}'))indent=Math.max(0,indent-1);
+        const formatted='  '.repeat(indent)+s;
+        if(s.endsWith('{'))indent++;
+        return formatted;
+      }).filter(Boolean).join('\n');
+    }
+    return code;
+  }
+
+  function getByteSize(s) {return new Blob([s||'']).size;}
+  document.addEventListener('DOMContentLoaded',()=>{
+    const input=document.getElementById('inputCode'),output=document.getElementById('outputCode');
+    const language=document.getElementById('language'),detected=document.getElementById('detectedLang');
+    const inputStats=document.getElementById('inputStats'),outputStats=document.getElementById('outputStats');
+    function currentLanguage() {
+      if(language.value!=='auto') {const label=language.options[language.selectedIndex].text;detected.innerText=`수동 지정: ${label}`;return language.value;}
+      const result=detectLanguage(input.value);detected.innerText=`감지된 언어: ${result.label}`;return result.lang;
+    }
+    function updateStats() {
+      const before=getByteSize(input.value),after=getByteSize(output.value);
+      const ratio=before?(((before-after)/before)*100).toFixed(1):'0';
+      outputStats.innerText=`크기: ${after} bytes (절감률: ${ratio}%)`;
+    }
+    input.addEventListener('input',()=>{inputStats.innerText=`크기: ${getByteSize(input.value)} bytes`;currentLanguage();});
+    language.addEventListener('change',currentLanguage);
+    document.getElementById('btnOptimize').addEventListener('click',()=>{output.value=minifyCode(input.value,currentLanguage());updateStats();});
+    document.getElementById('btnFormat').addEventListener('click',()=>{output.value=formatCode(input.value,currentLanguage());updateStats();});
+    document.getElementById('btnCopy').addEventListener('click',async()=>{
+      if(!output.value)return;
+      try {await navigator.clipboard.writeText(output.value);alert('클립보드에 복사되었습니다!');}
+      catch(error) {output.select();document.execCommand('copy');alert('클립보드에 복사되었습니다!');}
+    });
+  });</script></body></html>
