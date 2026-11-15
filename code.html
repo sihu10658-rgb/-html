@@ -5,21 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>스마트 코드 최적화 도구</title>
   <style>
-    :root { --bg-color:#1e1e2e; --card-bg:#2b2b3b; --text-color:#cdd6f4; --sub-text:#a6adc8; --primary-color:#89b4fa; --border-color:#45475a; --accent-color:#a6e3a1; }
-    body { font-family:Consolas,"Courier New",monospace; background:var(--bg-color); color:var(--text-color); margin:0; padding:20px; }
-    .container { max-width:1200px; margin:0 auto; background:var(--card-bg); padding:25px; border-radius:10px; box-shadow:0 4px 20px #0005; }
-    h1 { margin-top:0; text-align:center; color:var(--primary-color); }
-    .controls { display:flex; gap:15px; margin-bottom:20px; align-items:center; justify-content:center; flex-wrap:wrap; }
-    .lang-status { font-size:13px; color:var(--accent-color); font-weight:bold; padding:8px 12px; background:#181825; border-radius:6px; border:1px solid var(--border-color); }
-    select,button { padding:10px 16px; font-size:14px; border-radius:6px; border:1px solid var(--border-color); background:#313244; color:var(--text-color); cursor:pointer; }
-    button { background:var(--primary-color); color:#11111b; font-weight:bold; border:0; }
-    .editor-container { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-    @media(max-width:768px) { .editor-container { grid-template-columns:1fr; } }
-    .editor-box { display:flex; flex-direction:column; }
-    label { font-weight:bold; margin-bottom:8px; color:var(--sub-text); }
-    textarea { width:100%; height:450px; padding:12px; font:13px inherit; font-family:inherit; border:1px solid var(--border-color); border-radius:6px; resize:vertical; box-sizing:border-box; background:#181825; color:var(--text-color); }
-    textarea:focus { border-color:var(--primary-color); outline:none; }
-    .stats { margin-top:10px; font-size:13px; color:var(--sub-text); }
+    :root{--bg-color:#1e1e2e;--card-bg:#2b2b3b;--text-color:#cdd6f4;--sub-text:#a6adc8;--primary-color:#89b4fa;--border-color:#45475a;--accent-color:#a6e3a1}
+    body{font-family:Consolas,"Courier New",monospace;background:var(--bg-color);color:var(--text-color);margin:0;padding:20px}
+    .container{max-width:1200px;margin:0 auto;background:var(--card-bg);padding:25px;border-radius:10px;box-shadow:0 4px 20px #0005}
+    h1{margin-top:0;text-align:center;color:var(--primary-color)}
+    .controls{display:flex;gap:15px;margin-bottom:20px;align-items:center;justify-content:center;flex-wrap:wrap}
+    .lang-status{font-size:13px;color:var(--accent-color);font-weight:bold;padding:8px 12px;background:#181825;border-radius:6px;border:1px solid var(--border-color)}
+    select,button{padding:10px 16px;font-size:14px;border-radius:6px;border:1px solid var(--border-color);background:#313244;color:var(--text-color);cursor:pointer}
+    button{background:var(--primary-color);color:#11111b;font-weight:bold;border:0}
+    .editor-container{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    @media(max-width:768px){.editor-container{grid-template-columns:1fr}}
+    .editor-box{display:flex;flex-direction:column}
+    label{font-weight:bold;margin-bottom:8px;color:var(--sub-text)}
+    textarea{width:100%;height:450px;padding:12px;font-family:inherit;font-size:13px;border:1px solid var(--border-color);border-radius:6px;resize:vertical;box-sizing:border-box;background:#181825;color:var(--text-color)}
+    textarea:focus{border-color:var(--primary-color);outline:none}
+    .stats{margin-top:10px;font-size:13px;color:var(--sub-text)}
   </style>
 </head>
 <body>
@@ -33,7 +33,7 @@
         <option value="js">JavaScript</option><option value="python">Python</option>
         <option value="c">C</option><option value="cpp">C++</option><option value="go">Go</option>
       </select>
-      <button id="btnOptimize" type="button">코드 압축 (Minify)</button>
+      <button id="btnOptimize" type="button">극한 압축 (Minify)</button>
       <button id="btnFormat" type="button">코드 정렬 (Pretty)</button>
       <button id="btnCopy" type="button">결과 복사</button>
     </div>
@@ -44,123 +44,121 @@
   </div>
 <script>
   function detectLanguage(code) {
-    if (!code || !code.trim()) return { lang:'js', label:'없음' };
-    if (/<[a-z][\s\S]*>/i.test(code)) return { lang:'html', label:'HTML' };
-    if (/^\s*#\s*include\b|\bstd::|\bcout\s*<</m.test(code)) return { lang:'cpp', label:'C++' };
-    if (/\bpackage\s+main\b|\bfunc\s+(?:main|\w+)\s*\(|\bfmt\.Print/i.test(code)) return { lang:'go', label:'Go' };
-    if (/^\s*#\s*include\s*[<"]|\bint\s+main\s*\(|\bprintf\s*\(/m.test(code)) return { lang:'c', label:'C' };
-    if (/\bdef\s+\w+|\bimport\s+\w+|\bprint\s*\(/.test(code)) return { lang:'python', label:'Python' };
-    if (/[.#]?\w+\s*\{/.test(code) && !/function|const|let|var/.test(code)) return { lang:'css', label:'CSS' };
-    return { lang:'js', label:'JavaScript' };
+    if (!code || !code.trim()) return {lang:'js',label:'없음'};
+    if (/<[a-z][\s\S]*>/i.test(code)) return {lang:'html',label:'HTML'};
+    if (/^\s*#\s*include\b|\bstd::|\bcout\s*<</m.test(code)) return {lang:'cpp',label:'C++'};
+    if (/\bpackage\s+main\b|\bfunc\s+(?:main|\w+)\s*\(|\bfmt\.Print/i.test(code)) return {lang:'go',label:'Go'};
+    if (/^\s*#\s*include\s*[<"]|\bint\s+main\s*\(|\bprintf\s*\(/m.test(code)) return {lang:'c',label:'C'};
+    if (/\bdef\s+\w+|\bimport\s+\w+|\bprint\s*\(/.test(code)) return {lang:'python',label:'Python'};
+    if (/[.#]?\w+\s*\{/.test(code) && !/function|const|let|var/.test(code)) return {lang:'css',label:'CSS'};
+    return {lang:'js',label:'JavaScript'};
   }
 
-  // Remove C-style comments without treating comment markers inside quoted strings as comments.
-  function removeCStyleComments(code) {
-    let out = '', quote = null, lineComment = false, blockComment = false;
-    for (let i = 0; i < code.length; i++) {
-      const c = code[i], next = code[i + 1] || '';
-      if (lineComment) { if (c === '\n') { lineComment = false; out += c; } continue; }
-      if (blockComment) { if (c === '*' && next === '/') { blockComment = false; i++; } else if (c === '\n') out += '\n'; continue; }
-      if (quote) {
-        out += c;
-        if (c === '\\' && i + 1 < code.length) out += code[++i];
-        else if (c === quote) quote = null;
-        continue;
-      }
-      if (c === '"' || c === "'" || c === '`') { quote = c; out += c; continue; }
-      if (c === '/' && next === '/') { lineComment = true; i++; continue; }
-      if (c === '/' && next === '*') { blockComment = true; i++; continue; }
-      out += c;
+  // Strip C-style comments while preserving quoted text and newlines.
+  function stripCComments(code, lineComments=true) {
+    let out='', quote=null, line=false, block=false;
+    for (let i=0;i<code.length;i++) {
+      const c=code[i], n=code[i+1]||'';
+      if (line) { if (c==='\n') {line=false;out+='\n';} continue; }
+      if (block) { if (c==='*'&&n==='/') {block=false;i++;} else if (c==='\n') out+='\n'; continue; }
+      if (quote) { out+=c; if (c==='\\'&&i+1<code.length) out+=code[++i]; else if (c===quote) quote=null; continue; }
+      if (c==='"'||c==="'"||c==='`') {quote=c;out+=c;continue;}
+      if (lineComments&&c==='/'&&n==='/') {line=true;i++;continue;}
+      if (c==='/'&&n==='*') {block=true;i++;continue;}
+      out+=c;
     }
     return out;
   }
 
-  function minifyCode(code, lang) {
-    if (!code || !code.trim()) return '';
-    if (lang === 'html') {
-      let clean = code.replace(/<!--([\s\S]*?)-->/g, '');
-      clean = clean.replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/gi, (_, open, body, close) => open + minifyCode(body, 'css') + close);
-      clean = clean.replace(/(<script(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script>)/gi, (_, open, body, close) => open + minifyCode(body, 'js') + close);
-      return clean.replace(/>\s+</g, '><').trim();
+  function minifyTokens(code, lineComments=true) {
+    const source=stripCComments(code,lineComments);
+    let out='', quote=null, pendingSpace=false;
+    const word=c=>!!c&&/[\w$]/.test(c);
+    for (let i=0;i<source.length;i++) {
+      const c=source[i];
+      if (quote) {
+        out+=c;
+        if (c==='\\'&&i+1<source.length) out+=source[++i];
+        else if (c===quote) quote=null;
+        continue;
+      }
+      if (c==='"'||c==="'"||c==='`') {
+        if (pendingSpace&&word(out[out.length-1])) out+=' ';
+        pendingSpace=false;quote=c;out+=c;continue;
+      }
+      if (/\s/.test(c)) {pendingSpace=true;continue;}
+      const prev=out[out.length-1];
+      // Keep separators between identifier/number tokens and avoid merging ++, --, comments, or shifts.
+      const joined=prev+c;
+      const mustSeparate=(pendingSpace&&word(prev)&&word(c))||
+        (pendingSpace&&['++','--','//','/*','>>','<<','&&','||','==','!=','<=','>=','+=','-=','*=','/=','=>','...','??','?.'].includes(joined));
+      if (mustSeparate) out+=' ';
+      pendingSpace=false;out+=c;
     }
-    if (lang === 'css') {
-      return removeCStyleComments(code).replace(/\s*([{}:;,])\s*/g, '$1').replace(/[\t\r\n ]+/g, ' ').trim();
+    return out.trim();
+  }
+
+  function minifyCSS(code) {
+    // Retain meaningful selector/declaration whitespace; remove comments and redundant whitespace around safe delimiters.
+    return stripCComments(code,false).replace(/\s+/g,' ').replace(/\s*([{};,])\s*/g,'$1').trim();
+  }
+
+  function minifyCode(code,lang) {
+    if (!code||!code.trim()) return '';
+    if (lang==='html') {
+      let clean=code.replace(/<!--[\s\S]*?-->/g,'');
+      clean=clean.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi,(_,open,body,close)=>open+minifyCSS(body)+close);
+      clean=clean.replace(/(<script\b(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script\s*>)/gi,(_,open,body,close)=>open+minifyTokens(body,true)+close);
+      // Remove whitespace only between tags; preserve text-node whitespace.
+      return clean.replace(/>\s+</g,'><').trim();
     }
-    if (lang === 'js') {
-      // Conservative mode: remove comments but preserve token spacing to avoid changing program behavior.
-      return removeCStyleComments(code).split('\n').map(line => line.trim()).filter(Boolean).join('\n');
-    }
-    if (lang === 'c' || lang === 'cpp' || lang === 'go') {
-      // Keep line breaks and token spacing; aggressive regex minification can change C/Go semantics.
-      return removeCStyleComments(code).split('\n').map(line => line.trim()).filter(Boolean).join('\n');
-    }
-    if (lang === 'python') {
-      // Python indentation is significant, so only discard blank lines.
-      return code.split('\n').filter(line => line.trim()).join('\n');
+    if (lang==='css') return minifyCSS(code);
+    if (lang==='js'||lang==='c'||lang==='cpp'||lang==='go') return minifyTokens(code,true);
+    if (lang==='python') {
+      // Python indentation/newlines are syntax: do not flatten them or strip # inside strings.
+      return code.split('\n').filter(line=>line.trim()).join('\n');
     }
     return code;
   }
 
-  function formatCode(code, lang) {
-    if (!code || !code.trim()) return '';
-    if (lang === 'css') return code.replace(/\s*\{\s*/g, ' {\n  ').replace(/\s*;\s*/g, ';\n  ').replace(/\s*\}\s*/g, '\n}\n\n').trim();
-    if (['js', 'c', 'cpp', 'go'].includes(lang)) {
-      let indent = 0;
-      return code.split('\n').map(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return '';
-        if (trimmed.startsWith('}')) indent = Math.max(0, indent - 1);
-        const result = '  '.repeat(indent) + trimmed;
-        if (trimmed.endsWith('{')) indent++;
-        return result;
+  function formatCode(code,lang) {
+    if (!code||!code.trim()) return '';
+    if (lang==='css') return code.replace(/\s*\{\s*/g,' {\n  ').replace(/\s*;\s*/g,';\n  ').replace(/\s*\}\s*/g,'\n}\n\n').trim();
+    if (['js','c','cpp','go'].includes(lang)) {
+      let indent=0;
+      return code.split('\n').map(line=>{
+        const s=line.trim();if(!s)return '';
+        if(s.startsWith('}'))indent=Math.max(0,indent-1);
+        const formatted='  '.repeat(indent)+s;
+        if(s.endsWith('{'))indent++;
+        return formatted;
       }).filter(Boolean).join('\n');
     }
     return code;
   }
 
-  function getByteSize(value) { return new Blob([value || '']).size; }
-  document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('inputCode'), output = document.getElementById('outputCode');
-    const language = document.getElementById('language'), detected = document.getElementById('detectedLang');
-    const inputStats = document.getElementById('inputStats'), outputStats = document.getElementById('outputStats');
+  function getByteSize(s) {return new Blob([s||'']).size;}
+  document.addEventListener('DOMContentLoaded',()=>{
+    const input=document.getElementById('inputCode'),output=document.getElementById('outputCode');
+    const language=document.getElementById('language'),detected=document.getElementById('detectedLang');
+    const inputStats=document.getElementById('inputStats'),outputStats=document.getElementById('outputStats');
     function currentLanguage() {
-      if (language.value !== 'auto') {
-        const label = language.options[language.selectedIndex].text;
-        detected.innerText = `수동 지정: ${label}`;
-        return language.value;
-      }
-      const result = detectLanguage(input.value);
-      detected.innerText = `감지된 언어: ${result.label}`;
-      return result.lang;
+      if(language.value!=='auto') {const label=language.options[language.selectedIndex].text;detected.innerText=`수동 지정: ${label}`;return language.value;}
+      const result=detectLanguage(input.value);detected.innerText=`감지된 언어: ${result.label}`;return result.lang;
     }
     function updateStats() {
-      const inputSize = getByteSize(input.value), outputSize = getByteSize(output.value);
-      const ratio = inputSize ? (((inputSize - outputSize) / inputSize) * 100).toFixed(1) : '0';
-      outputStats.innerText = `크기: ${outputSize} bytes (절감률: ${ratio}%)`;
+      const before=getByteSize(input.value),after=getByteSize(output.value);
+      const ratio=before?(((before-after)/before)*100).toFixed(1):'0';
+      outputStats.innerText=`크기: ${after} bytes (절감률: ${ratio}%)`;
     }
-    input.addEventListener('input', () => {
-      inputStats.innerText = `크기: ${getByteSize(input.value)} bytes`;
-      currentLanguage();
-    });
-    language.addEventListener('change', currentLanguage);
-    document.getElementById('btnOptimize').addEventListener('click', () => {
-      output.value = minifyCode(input.value, currentLanguage());
-      updateStats();
-    });
-    document.getElementById('btnFormat').addEventListener('click', () => {
-      output.value = formatCode(input.value, currentLanguage());
-      updateStats();
-    });
-    document.getElementById('btnCopy').addEventListener('click', async () => {
-      if (!output.value) return;
-      try {
-        await navigator.clipboard.writeText(output.value);
-        alert('클립보드에 복사되었습니다!');
-      } catch (error) {
-        output.select();
-        document.execCommand('copy');
-        alert('클립보드에 복사되었습니다!');
-      }
+    input.addEventListener('input',()=>{inputStats.innerText=`크기: ${getByteSize(input.value)} bytes`;currentLanguage();});
+    language.addEventListener('change',currentLanguage);
+    document.getElementById('btnOptimize').addEventListener('click',()=>{output.value=minifyCode(input.value,currentLanguage());updateStats();});
+    document.getElementById('btnFormat').addEventListener('click',()=>{output.value=formatCode(input.value,currentLanguage());updateStats();});
+    document.getElementById('btnCopy').addEventListener('click',async()=>{
+      if(!output.value)return;
+      try {await navigator.clipboard.writeText(output.value);alert('클립보드에 복사되었습니다!');}
+      catch(error) {output.select();document.execCommand('copy');alert('클립보드에 복사되었습니다!');}
     });
   });
 </script>
