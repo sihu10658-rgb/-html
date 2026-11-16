@@ -167,7 +167,10 @@
         return { lang: 'html', label: 'HTML' };
       }
 
-      if (/^\s*([.#]?[\w-]+\s*\{)|@media|@keyframes|@import/i.test(code) && !/function|const|let|var/.test(code)) {
+      const hasJavaScriptSyntax = /\b(?:function|const|let|var|return|new|class|async|await|throw|if|for|while|switch|import|export)\b|=>|(?:^|[;])\s*[\w$]+\s*=\s*(?:\{|\[|function\b)/m.test(code);
+      const hasCssAtRule = /^\s*@(media|keyframes|import|supports|font-face)\b/im.test(code);
+      const hasCssRule = /(?:^|\n)\s*(?:[.#][\w-]+|[a-zA-Z][\w-]*(?:\s*[,>+~]\s*[.#\w-]+)*)\s*\{[^{}]*\b[-\w]+\s*:\s*[^{};]+;?\s*\}/m.test(code);
+      if ((hasCssAtRule || hasCssRule) && !hasJavaScriptSyntax) {
         return { lang: 'css', label: 'CSS' };
       }
 
@@ -190,130 +193,208 @@
       return { lang: 'js', label: 'JavaScript' };
     }
 
-    function stripCComments(code, lineComments = true) {
+    function minifyTokens(code, lineComments = true) {
       let out = '';
-      let quote = null;
-      let line = false;
-      let block = false;
+      let pendingSpace = false;
+      let canStartRegex = true;
+      const isWord = ch => !!ch && /[\w$]/.test(ch);
+      const regexPrefixKeywords = new Set(['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'of', 'yield', 'await', 'else', 'do']);
 
-      for (let i = 0; i < code.length; i++) {
+      for (let i = 0; i < code.length;) {
         const c = code[i];
         const n = code[i + 1] || '';
 
-        if (line) {
-          if (c === '\n') {
-            line = false;
-            out += '\n';
-          }
-          continue;
-        }
-
-        if (block) {
-          if (c === '*' && n === '/') {
-            block = false;
-            i++;
-          } else if (c === '\n') {
-            out += '\n';
-          }
-          continue;
-        }
-
-        if (quote) {
-          out += c;
-          if (c === '\\' && i + 1 < code.length) {
-            out += code[++i];
-          } else if (c === quote) {
-            quote = null;
-          }
-          continue;
-        }
-
-        if (c === '"' || c === "'" || c === '`') {
-          quote = c;
-          out += c;
-          continue;
-        }
-
-        if (lineComments && c === '/' && n === '/') {
-          line = true;
+        if (/\s/.test(c)) {
+          pendingSpace = true;
           i++;
           continue;
         }
 
+        // Remove comments only when the slash is not starting a regex literal.
+        if (c === '/' && n === '/' && lineComments) {
+          i += 2;
+          while (i < code.length && code[i] !== '\n' && code[i] !== '\r') i++;
+          pendingSpace = true;
+          continue;
+        }
         if (c === '/' && n === '*') {
-          block = true;
-          i++;
-          continue;
-        }
-
-        out += c;
-      }
-
-      return out;
-    }
-
-    function minifyTokens(code, lineComments = true) {
-      const source = stripCComments(code, lineComments);
-      let out = '';
-      let quote = null;
-      let pendingSpace = false;
-      const isWord = ch => !!ch && /[\w$]/.test(ch);
-
-      for (let i = 0; i < source.length; i++) {
-        const c = source[i];
-
-        if (quote) {
-          out += c;
-          if (c === '\\' && i + 1 < source.length) {
-            out += source[++i];
-          } else if (c === quote) {
-            quote = null;
-          }
+          i += 2;
+          while (i < code.length && !(code[i] === '*' && code[i + 1] === '/')) i++;
+          if (i < code.length) i += 2;
+          pendingSpace = true;
           continue;
         }
 
         if (c === '"' || c === "'" || c === '`') {
           if (pendingSpace && isWord(out[out.length - 1])) out += ' ';
           pendingSpace = false;
-          quote = c;
+          const quote = c;
           out += c;
+          i++;
+          while (i < code.length) {
+            const current = code[i++];
+            out += current;
+            if (current === '\\' && i < code.length) out += code[i++];
+            else if (current === quote) break;
+          }
+          canStartRegex = false;
           continue;
         }
 
-        if (/\s/.test(c)) {
-          pendingSpace = true;
+        if (c === '/' && canStartRegex) {
+          if (pendingSpace && isWord(out[out.length - 1])) out += ' ';
+          pendingSpace = false;
+          out += c;
+          i++;
+          let inCharacterClass = false;
+          while (i < code.length) {
+            const current = code[i++];
+            out += current;
+            if (current === '\\' && i < code.length) {
+              out += code[i++];
+            } else if (current === '[') {
+              inCharacterClass = true;
+            } else if (current === ']') {
+              inCharacterClass = false;
+            } else if (current === '/' && !inCharacterClass) {
+              while (i < code.length && /[a-z]/i.test(code[i])) out += code[i++];
+              break;
+            } else if (current === '\n' || current === '\r') {
+              break;
+            }
+          }
+          canStartRegex = false;
           continue;
         }
 
-        const prev = out[out.length - 1];
-        const joined = prev + c;
-        const mustSeparate =
-          (pendingSpace && isWord(prev) && isWord(c)) ||
-          (pendingSpace && ['++','--','//','/*','>>','<<','&&','||','==','!=','<=','>=','+=','-=','*=','/=','=>','...','??','?.'].includes(joined));
-
-        if (mustSeparate) out += ' ';
+        if (pendingSpace && isWord(out[out.length - 1]) && isWord(c)) out += ' ';
         pendingSpace = false;
+
+        if (/[\w$]/.test(c)) {
+          const start = i;
+          while (i < code.length && /[\w$]/.test(code[i])) i++;
+          const word = code.slice(start, i);
+          out += word;
+          canStartRegex = regexPrefixKeywords.has(word);
+          continue;
+        }
+
         out += c;
+        i++;
+        if (c === ')' || c === ']' || c === '}' || c === '.' || c === '`') {
+          canStartRegex = false;
+        } else if (c === '(' || c === '[' || c === '{' || c === ',' || c === ';' || c === ':' || c === '?' || c === '=' || c === '!' || c === '~' || c === '+' || c === '-' || c === '*' || c === '%' || c === '&' || c === '|' || c === '^' || c === '<' || c === '>' || c === '/') {
+          canStartRegex = true;
+        }
       }
 
       return out.trim();
     }
 
     function minifyCSS(code) {
-      return stripCComments(code, false)
+      return code.replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/\s+/g, ' ')
         .replace(/\s*([{};,])\s*/g, '$1')
         .trim();
+    }
+
+    function findScriptClose(code, start) {
+      let quote = null;
+      let lineComment = false;
+      let blockComment = false;
+      let regexAllowed = true;
+      let inCharacterClass = false;
+      let previousWord = '';
+      const regexPrefixKeywords = new Set(['return', 'throw', 'case', 'delete', 'void', 'typeof', 'instanceof', 'in', 'of', 'yield', 'await', 'else', 'do']);
+
+      for (let i = start; i < code.length;) {
+        const c = code[i];
+        const n = code[i + 1] || '';
+
+        if (!quote && !lineComment && !blockComment && /^<\/script\s*>/i.test(code.slice(i))) {
+          const match = code.slice(i).match(/^<\/script\s*>/i);
+          return { index: i, end: i + match[0].length };
+        }
+
+        if (lineComment) {
+          if (c === '\n' || c === '\r') lineComment = false;
+          i++;
+          continue;
+        }
+        if (blockComment) {
+          if (c === '*' && n === '/') { blockComment = false; i += 2; }
+          else i++;
+          continue;
+        }
+        if (quote) {
+          if (c === '\\') i += Math.min(2, code.length - i);
+          else { if (c === quote) quote = null; i++; }
+          continue;
+        }
+        if (c === '"' || c === "'" || c === '`') { quote = c; i++; continue; }
+        if (c === '/' && n === '/' ) { lineComment = true; i += 2; continue; }
+        if (c === '/' && n === '*') { blockComment = true; i += 2; continue; }
+        if (c === '/' && regexAllowed) {
+          i++;
+          let inClass = false;
+          while (i < code.length) {
+            const current = code[i++];
+            if (current === '\\') i++;
+            else if (current === '[') inClass = true;
+            else if (current === ']') inClass = false;
+            else if (current === '/' && !inClass) {
+              while (i < code.length && /[a-z]/i.test(code[i])) i++;
+              break;
+            } else if (current === '\n' || current === '\r') break;
+          }
+          regexAllowed = false;
+          previousWord = '';
+          continue;
+        }
+        if (/[\w$]/.test(c)) {
+          const startWord = i;
+          while (i < code.length && /[\w$]/.test(code[i])) i++;
+          previousWord = code.slice(startWord, i);
+          regexAllowed = regexPrefixKeywords.has(previousWord);
+          continue;
+        }
+        if (!/\s/.test(c)) {
+          previousWord = '';
+          regexAllowed = !(/[)\]}]/.test(c) || c === ',');
+        }
+        i++;
+      }
+      return null;
     }
 
     function minifyCode(code, lang) {
       if (!code || !code.trim()) return '';
 
       if (lang === 'html') {
-        let clean = code;
-        clean = clean.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi, (_, open, body, close) => open + minifyCSS(body) + close);
-        clean = clean.replace(/(<script\b(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script\s*>)/gi, (_, open, body, close) => open + minifyTokens(body, true) + close);
-        return clean.replace(/>\s+</g, '><').trim();
+        let clean = code.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style\s*>)/gi, (_, open, body, close) => open + minifyCSS(body) + close);
+        const scriptOpen = /<script\b(?![^>]*\bsrc\s*=)[^>]*>/gi;
+        let result = '';
+        let last = 0;
+        let opening;
+
+        while ((opening = scriptOpen.exec(clean))) {
+          const bodyStart = scriptOpen.lastIndex;
+          const closing = findScriptClose(clean, bodyStart);
+          if (!closing) {
+            result += clean.slice(last, bodyStart) + minifyTokens(clean.slice(bodyStart), true);
+            last = clean.length;
+            break;
+          }
+          let body = minifyTokens(clean.slice(bodyStart, closing.index), true);
+          // Prevent the HTML raw-text parser from treating a literal in JS as the end tag.
+          body = body.replace(/<\/script/gi, '<\\/script');
+          result += clean.slice(last, bodyStart) + body + clean.slice(closing.index, closing.end);
+          last = closing.end;
+          scriptOpen.lastIndex = closing.end;
+        }
+
+        if (last < clean.length) result += clean.slice(last);
+        return result.replace(/>\s+</g, '><').trim();
       }
 
       if (lang === 'css') return minifyCSS(code);
