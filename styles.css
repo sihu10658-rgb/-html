@@ -65,6 +65,11 @@
       color: #11111b;
       font-weight: bold;
       border: 0;
+      transition: filter 0.2s ease;
+    }
+
+    button:hover {
+      filter: brightness(1.08);
     }
 
     .editor-container {
