@@ -1,6 +1,6 @@
 'use strict';
 
-// Keep this as a classic script (not an ES module) so the app also works from file://.
+// Classic script: this app can be opened directly from file://.
 (() => {
   const LABELS = {
     html: 'HTML', css: 'CSS', js: 'JavaScript', python: 'Python',
@@ -21,13 +21,13 @@
     const code = source.trim();
     if (!code) return 'js';
 
-    // Prioritize distinctive syntax; ambiguous snippets should be selected manually.
+    // Detection only affects the label; it never selects a risky transformation.
     if (/<!doctype\s+html|<\/?(?:html|head|body|div|main|section|script|style)\b/i.test(code)) return 'html';
-    if (/^\s*#include\s*[<"]|\b(?:printf|scanf)\s*\(/m.test(code)) return 'c';
     if (/\b(?:std::|cout\s*<<|cin\s*>>)|^\s*using\s+namespace\s+std\s*;/m.test(code)) return 'cpp';
+    if (/^\s*#include\s*[<"]|\b(?:printf|scanf)\s*\(/m.test(code)) return 'c';
     if (/^\s*package\s+\w+\s*$|^\s*func\s+\w+\s*\(|\bfmt\.(?:Print|Scan)/m.test(code)) return 'go';
     if (/^\s*(?:def\s+\w+|class\s+\w+\s*\(|from\s+\w+\s+import\s+|import\s+\w+)|^\s*print\s*\(/m.test(code)) return 'python';
-    if (/^[\s\S]*?(?:^|\n)\s*(?:@media\b|[.#][\w-]+(?:\s+[.#]?[\w-]+)*\s*\{|(?:color|background|display|margin|padding|font-size)\s*:)/im.test(code)) return 'css';
+    if (/^\s*(?:@media\b|[.#][\w-]+(?:\s+[.#]?[\w-]+)*\s*\{|(?:color|background|display|margin|padding|font-size)\s*:)/im.test(code)) return 'css';
     return 'js';
   }
 
@@ -35,78 +35,9 @@
     return select.value === 'auto' ? detectLanguage(source) : select.value;
   }
 
-  function minifyCss(code) {
-    return code
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\s+/g, ' ')
-      .replace(/\s*([{}:;,])\s*/g, '$1')
-      .replace(/;}/g, '}')
-      .trim();
-  }
-
-  // Deliberately conservative: preserve spaces and comments when removing them could
-  // change tokenization. A full JavaScript minifier requires a parser.
-  function minifyJs(code) {
-    return code
-      .replace(/\/\*[\s\S]*?\*\//g, ' ')
-      .replace(/(^|\s)\/\/[^\n\r]*/g, '$1')
-      .replace(/[\t ]+/g, ' ')
-      .replace(/\s*([{};,])\s*/g, '$1')
-      .trim();
-  }
-
-  function minifyHtml(code) {
-    // Avoid changing whitespace inside preformatted or text-sensitive elements.
-    return code
-      .replace(/>\s+</g, '><')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
-  }
-
-  function formatHtml(code) {
-    return code.replace(/>\s*</g, '>\n<').trim();
-  }
-
-  function formatCss(code) {
-    return code
-      .replace(/\s*\{\s*/g, ' {\n  ')
-      .replace(/;\s*/g, ';\n  ')
-      .replace(/\s*\}\s*/g, '\n}\n')
-      .replace(/\n[\t ]*\n+/g, '\n')
-      .trim();
-  }
-
-  function formatBracedCode(code) {
-    const lines = code.replace(/\s*([{};])\s*/g, '$1\n').split(/\r?\n/);
-    let depth = 0;
-    const formatted = [];
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
-      if (line.startsWith('}')) depth = Math.max(0, depth - 1);
-      formatted.push(`${'  '.repeat(depth)}${line}`);
-      const opens = (line.match(/\{/g) || []).length;
-      const closes = (line.match(/\}/g) || []).length;
-      depth = Math.max(0, depth + opens - closes);
-    }
-    return formatted.join('\n');
-  }
-
-  function transform(source, language, operation) {
-    if (!source.trim()) return '';
-    if (operation === 'format') {
-      if (language === 'html') return formatHtml(source);
-      if (language === 'css') return formatCss(source);
-      if (['js', 'c', 'cpp', 'go'].includes(language)) return formatBracedCode(source);
-      return source; // Python indentation is meaningful; do not strip it.
-    }
-
-    if (language === 'html') return minifyHtml(source);
-    if (language === 'css') return minifyCss(source);
-    if (language === 'js') return minifyJs(source);
-    // Whitespace and indentation are significant in Python and can be meaningful
-    // in C-family languages too. Preserve source rather than risk corrupting it.
+  // Fail-safe mode: regex-based formatting/minification can change program meaning.
+  // Until language parsers and round-trip tests are added, return the exact input.
+  function transform(source) {
     return source;
   }
 
@@ -117,7 +48,6 @@
     const detected = byId('detectedLang');
     const inputStats = byId('inputStats');
     const outputStats = byId('outputStats');
-    const copyButton = byId('btnCopy');
 
     function updateLanguageStatus() {
       const selected = selectedLanguage(language, input.value);
@@ -135,9 +65,12 @@
     }
 
     function run(operation) {
-      const lang = updateLanguageStatus();
-      output.value = transform(input.value, lang, operation);
+      updateLanguageStatus();
+      output.value = transform(input.value, operation);
       updateStats();
+      detected.textContent = input.value
+        ? '안전 모드: 코드 손상 방지를 위해 원문을 그대로 출력했습니다.'
+        : '입력 코드가 비어 있습니다.';
     }
 
     async function copyOutput() {
@@ -168,7 +101,7 @@
     });
     byId('btnOptimize').addEventListener('click', () => run('minify'));
     byId('btnFormat').addEventListener('click', () => run('format'));
-    copyButton.addEventListener('click', copyOutput);
+    byId('btnCopy').addEventListener('click', copyOutput);
 
     updateLanguageStatus();
     updateStats();
