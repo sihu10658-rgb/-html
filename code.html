@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>스마트 코드 최적화 도구</title>
     <link rel="stylesheet" href="./styles.css" />
-    <!-- Pinned browser builds: formatting/minification uses parsers, not regex rewriting. -->
+    <!-- Pinned browser builds: formatting uses parsers, never regex rewriting. -->
     <script defer src="https://cdn.jsdelivr.net/npm/prettier@3.5.3/standalone.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/prettier@3.5.3/plugins/babel.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/prettier@3.5.3/plugins/estree.js"></script>
@@ -36,6 +36,8 @@
         <button id="btnCopy" type="button">복사</button>
       </section>
 
+      <p id="statusMessage" class="status-message" role="status" aria-live="polite" hidden></p>
+
       <section class="editor-container" aria-label="코드 편집기">
         <div class="editor-box">
           <label for="inputCode">입력 코드</label>
@@ -48,6 +50,8 @@
           <div id="outputStats" class="stats">결과 크기: 0 bytes (절감률: 0%)</div>
         </div>
       </section>
+
+      <section id="diagnostics" class="diagnostics" aria-live="polite" aria-label="잠재적 코드 진단"></section>
     </main>
   </body>
 </html>

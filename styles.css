@@ -68,9 +68,7 @@
       transition: filter 0.2s ease;
     }
 
-    button:hover {
-      filter: brightness(1.08);
-    }
+    button:hover { filter: brightness(1.08); }
 
     .editor-container {
       display: grid;
@@ -103,10 +101,7 @@
       color: var(--text-color);
     }
 
-    textarea:focus {
-      border-color: var(--primary-color);
-      outline: none;
-    }
+    textarea:focus { border-color: var(--primary-color); outline: none; }
 
     .stats {
       margin-top: 10px;
@@ -114,8 +109,28 @@
       color: var(--sub-text);
     }
 
+    .status-message, .diagnostics {
+      margin: 16px 0;
+      padding: 12px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--card-bg);
+      line-height: 1.6;
+    }
+
+    .status-message[hidden] { display: none; }
+    .status-message.info { color: var(--primary-color); }
+    .status-message.success { color: var(--accent-color); }
+    .status-message.warning { color: #f9e2af; }
+    .status-message.error { color: #f38ba8; }
+
+    .diagnostics { color: var(--text-color); }
+    .diagnostics h2 { margin: 0 0 8px; font-size: 16px; color: var(--primary-color); }
+    .diagnostics p { margin: 6px 0; }
+    .diagnostics ul { margin: 8px 0; padding-left: 24px; }
+    .diagnostics li { margin: 5px 0; color: #f9e2af; }
+    .diagnostics-note { color: var(--sub-text); font-size: 12px; }
+
     @media (max-width: 768px) {
-      .editor-container {
-        grid-template-columns: 1fr;
-      }
+      .editor-container { grid-template-columns: 1fr; }
     }
