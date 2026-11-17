@@ -1,11 +1,13 @@
 'use strict';
 
-// Classic script: this app can be opened directly from file://.
+// Classic script: the app can be opened from file://. Formatter/minifier libraries
+// are pinned browser builds loaded by code.html; no source is evaluated or executed.
 (() => {
   const LABELS = {
     html: 'HTML', css: 'CSS', js: 'JavaScript', python: 'Python',
     c: 'C', cpp: 'C++', go: 'Go'
   };
+  const FORMAT_PARSERS = { html: 'html', css: 'css', js: 'babel' };
 
   function byId(id) {
     const element = document.getElementById(id);
@@ -20,8 +22,6 @@
   function detectLanguage(source) {
     const code = source.trim();
     if (!code) return 'js';
-
-    // Detection only affects the label; it never selects a risky transformation.
     if (/<!doctype\s+html|<\/?(?:html|head|body|div|main|section|script|style)\b/i.test(code)) return 'html';
     if (/\b(?:std::|cout\s*<<|cin\s*>>)|^\s*using\s+namespace\s+std\s*;/m.test(code)) return 'cpp';
     if (/^\s*#include\s*[<"]|\b(?:printf|scanf)\s*\(/m.test(code)) return 'c';
@@ -35,10 +35,54 @@
     return select.value === 'auto' ? detectLanguage(source) : select.value;
   }
 
-  // Fail-safe mode: regex-based formatting/minification can change program meaning.
-  // Until language parsers and round-trip tests are added, return the exact input.
-  function transform(source) {
-    return source;
+  function formatCode(source, language) {
+    const parser = FORMAT_PARSERS[language];
+    if (!parser) {
+      throw new Error(`현재는 ${LABELS[language] || language} 정렬을 지원하지 않습니다. 원문은 변경하지 않았습니다.`);
+    }
+    if (!window.prettier || !window.prettierPlugins) {
+      throw new Error('정렬 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
+    }
+
+    const pluginNames = language === 'js'
+      ? ['babel', 'estree']
+      : language === 'html'
+        ? ['html']
+        : ['postcss'];
+    const plugins = pluginNames.map((name) => window.prettierPlugins[name]).filter(Boolean);
+    if (plugins.length !== pluginNames.length) {
+      throw new Error('정렬 플러그인을 불러오지 못했습니다. 원문은 변경하지 않았습니다.');
+    }
+
+    return window.prettier.format(source, {
+      parser,
+      plugins,
+      tabWidth: 2,
+      printWidth: 100,
+      singleQuote: true,
+      semi: true
+    });
+  }
+
+  async function minifyCode(source, language) {
+    if (language !== 'js') {
+      throw new Error(`실제 압축은 현재 JavaScript만 지원합니다. ${LABELS[language] || language} 원문은 변경하지 않았습니다.`);
+    }
+    if (!window.Terser || typeof window.Terser.minify !== 'function') {
+      throw new Error('JavaScript 압축 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
+    }
+
+    // Terser parses JavaScript before rewriting it. Compression/mangling are disabled
+    // to avoid changing runtime semantics or public names; whitespace/comments shrink.
+    const result = await window.Terser.minify(source, {
+      compress: false,
+      mangle: false,
+      format: { comments: 'some' }
+    });
+    if (!result || typeof result.code !== 'string') {
+      throw new Error('압축 결과를 만들지 못했습니다. 원문은 변경하지 않았습니다.');
+    }
+    return result.code;
   }
 
   function init() {
@@ -48,6 +92,7 @@
     const detected = byId('detectedLang');
     const inputStats = byId('inputStats');
     const outputStats = byId('outputStats');
+    let actionVersion = 0;
 
     function updateLanguageStatus() {
       const selected = selectedLanguage(language, input.value);
@@ -64,13 +109,32 @@
       outputStats.textContent = `결과 크기: ${after} bytes (절감률: ${reduction.toFixed(1)}%)`;
     }
 
-    function run(operation) {
-      updateLanguageStatus();
-      output.value = transform(input.value, operation);
-      updateStats();
-      detected.textContent = input.value
-        ? '안전 모드: 코드 손상 방지를 위해 원문을 그대로 출력했습니다.'
-        : '입력 코드가 비어 있습니다.';
+    async function run(operation) {
+      const thisAction = ++actionVersion;
+      const source = input.value;
+      const lang = updateLanguageStatus();
+      if (!source.trim()) {
+        output.value = '';
+        updateStats();
+        detected.textContent = '입력 코드가 비어 있습니다.';
+        return;
+      }
+
+      detected.textContent = operation === 'format' ? '정렬 중…' : '압축 중…';
+      try {
+        const result = operation === 'format'
+          ? await formatCode(source, lang)
+          : await minifyCode(source, lang);
+        // Do not publish a stale result if the user edited the input meanwhile.
+        if (thisAction !== actionVersion || input.value !== source) return;
+        output.value = result;
+        updateStats();
+        detected.textContent = operation === 'format' ? '정렬 완료' : '압축 완료';
+      } catch (error) {
+        if (thisAction !== actionVersion) return;
+        console.warn('Transformation was not applied:', error);
+        detected.textContent = error instanceof Error ? error.message : '변환에 실패했습니다. 원문은 변경하지 않았습니다.';
+      }
     }
 
     async function copyOutput() {
@@ -96,6 +160,7 @@
 
     language.addEventListener('change', updateLanguageStatus);
     input.addEventListener('input', () => {
+      actionVersion++;
       updateLanguageStatus();
       updateStats();
     });
