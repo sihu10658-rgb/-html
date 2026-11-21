@@ -12,6 +12,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/prettier@3.5.3/plugins/html.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/prettier@3.5.3/plugins/postcss.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/terser@5.39.0/dist/bundle.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/csso@5.0.5/dist/csso.js"></script>
     <script defer src="./script.js"></script>
   </head>
   <body>
@@ -20,6 +21,7 @@
 
       <section class="controls" aria-label="코드 도구">
         <p id="detectedLang" class="lang-status" aria-live="polite">감지: JavaScript</p>
+        <p id="capabilityStatus" class="lang-status" aria-live="polite"></p>
         <label for="language">언어</label>
         <select id="language">
           <option value="auto">자동 감지</option>

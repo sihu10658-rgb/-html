@@ -22,11 +22,14 @@
   function detectLanguage(source) {
     const code = source.trim();
     if (!code) return 'js';
+
+    // Prefer distinctive syntax first. Generic calls such as print() are deliberately
+    // not treated as Python because they are also valid in JavaScript.
     if (/<!doctype\s+html|<\/?(?:html|head|body|div|main|section|script|style)\b/i.test(code)) return 'html';
     if (/\b(?:std::|cout\s*<<|cin\s*>>)|^\s*using\s+namespace\s+std\s*;/m.test(code)) return 'cpp';
-    if (/^\s*#include\s*[<"]|\b(?:printf|scanf)\s*\(/m.test(code)) return 'c';
     if (/^\s*package\s+\w+\s*$|^\s*func\s+\w+\s*\(|\bfmt\.(?:Print|Scan)/m.test(code)) return 'go';
-    if (/^\s*(?:def\s+\w+|class\s+\w+\s*\(|from\s+\w+\s+import\s+|import\s+\w+)|^\s*print\s*\(/m.test(code)) return 'python';
+    if (/^\s*(?:def\s+\w+|class\s+\w+\s*(?:\(|:)|from\s+\w+\s+import\s+|import\s+\w+\s*$)/m.test(code)) return 'python';
+    if (/^\s*#include\s*[<"]|\b(?:printf|scanf)\s*\(/m.test(code)) return 'c';
     if (/^\s*(?:@media\b|[.#][\w-]+(?:\s+[.#]?[\w-]+)*\s*\{|(?:color|background|display|margin|padding|font-size)\s*:)/im.test(code)) return 'css';
     return 'js';
   }
@@ -65,8 +68,19 @@
   }
 
   async function minifyCode(source, language) {
+    if (language === 'css') {
+      if (!window.csso || typeof window.csso.minify !== 'function') {
+        throw new Error('CSS 압축 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
+      }
+      const result = window.csso.minify(source);
+      if (!result || typeof result.css !== 'string') {
+        throw new Error('CSS 압축 결과를 만들지 못했습니다. 원문은 변경하지 않았습니다.');
+      }
+      return result.css;
+    }
+
     if (language !== 'js') {
-      throw new Error(`실제 압축은 현재 JavaScript만 지원합니다. ${LABELS[language] || language} 원문은 변경하지 않았습니다.`);
+      throw new Error(`실제 압축은 JavaScript와 CSS만 지원합니다. ${LABELS[language] || language} 원문은 변경하지 않았습니다.`);
     }
     if (!window.Terser || typeof window.Terser.minify !== 'function') {
       throw new Error('JavaScript 압축 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
@@ -90,6 +104,7 @@
     const input = byId('inputCode');
     const output = byId('outputCode');
     const detected = byId('detectedLang');
+    const capability = byId('capabilityStatus');
     const inputStats = byId('inputStats');
     const outputStats = byId('outputStats');
     let actionVersion = 0;
@@ -98,6 +113,10 @@
       const selected = selectedLanguage(language, input.value);
       const prefix = language.value === 'auto' ? '감지' : '선택';
       detected.textContent = `${prefix}: ${LABELS[selected] || LABELS.js}`;
+      const canFormat = Object.hasOwn(FORMAT_PARSERS, selected);
+      const canMinify = selected === 'js' || selected === 'css';
+      const actions = [canFormat ? '정렬 지원' : '정렬 미지원', canMinify ? '압축 지원' : '압축 미지원'];
+      capability.textContent = `${LABELS[selected] || selected}: ${actions.join(' · ')}`;
       return selected;
     }
 
