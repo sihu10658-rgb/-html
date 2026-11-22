@@ -1,7 +1,5 @@
 'use strict';
 
-// Classic script: the app can be opened from file://. Formatter/minifier libraries
-// are pinned browser builds loaded by code.html; no source is evaluated or executed.
 (() => {
   const LABELS = {
     html: 'HTML', css: 'CSS', js: 'JavaScript', python: 'Python',
@@ -22,13 +20,10 @@
   function detectLanguage(source) {
     const code = source.trim();
     if (!code) return 'js';
-
-    // Prefer distinctive syntax first. Generic calls such as print() are deliberately
-    // not treated as Python because they are also valid in JavaScript.
-    if (/<!doctype\s+html|<\/?(?:html|head|body|div|main|section|script|style)\b/i.test(code)) return 'html';
+    if (/<!doctype\s+html|<\/\?(?:xml)|<\/?(?:html|head|body|div|main|section|script|style)\b/i.test(code)) return 'html';
     if (/\b(?:std::|cout\s*<<|cin\s*>>)|^\s*using\s+namespace\s+std\s*;/m.test(code)) return 'cpp';
     if (/^\s*package\s+\w+\s*$|^\s*func\s+\w+\s*\(|\bfmt\.(?:Print|Scan)/m.test(code)) return 'go';
-    if (/^\s*(?:def\s+\w+|class\s+\w+\s*(?:\(|:)|from\s+\w+\s+import\s+|import\s+\w+\s*$)/m.test(code)) return 'python';
+    if (/^\s*(?:def\s+\w+|class\s+\w+(?:\s*\(|\s*:)|from\s+\w+\s+import\s+|import\s+\w+\s*$)/m.test(code)) return 'python';
     if (/^\s*#include\s*[<"]|\b(?:printf|scanf)\s*\(/m.test(code)) return 'c';
     if (/^\s*(?:@media\b|[.#][\w-]+(?:\s+[.#]?[\w-]+)*\s*\{|(?:color|background|display|margin|padding|font-size)\s*:)/im.test(code)) return 'css';
     return 'js';
@@ -40,63 +35,121 @@
 
   function formatCode(source, language) {
     const parser = FORMAT_PARSERS[language];
-    if (!parser) {
-      throw new Error(`현재는 ${LABELS[language] || language} 정렬을 지원하지 않습니다. 원문은 변경하지 않았습니다.`);
-    }
-    if (!window.prettier || !window.prettierPlugins) {
-      throw new Error('정렬 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
-    }
+    if (!parser) throw new Error(`현재는 ${LABELS[language] || language} 정렬을 지원하지 않습니다. 원문은 변경하지 않았습니다.`);
+    if (!window.prettier || !window.prettierPlugins) throw new Error('정렬 도구를 불러오지 못했습니다. 원문은 변경하지 않았습니다.');
 
-    const pluginNames = language === 'js'
-      ? ['babel', 'estree']
-      : language === 'html'
-        ? ['html']
-        : ['postcss'];
+    const pluginNames = language === 'js' ? ['babel', 'estree'] : language === 'html' ? ['html'] : ['postcss'];
     const plugins = pluginNames.map((name) => window.prettierPlugins[name]).filter(Boolean);
-    if (plugins.length !== pluginNames.length) {
-      throw new Error('정렬 플러그인을 불러오지 못했습니다. 원문은 변경하지 않았습니다.');
-    }
+    if (plugins.length !== pluginNames.length) throw new Error('정렬 플러그인을 불러오지 못했습니다. 원문은 변경하지 않았습니다.');
 
-    return window.prettier.format(source, {
-      parser,
-      plugins,
-      tabWidth: 2,
-      printWidth: 100,
-      singleQuote: true,
-      semi: true
-    });
+    return window.prettier.format(source, { parser, plugins, tabWidth: 2, printWidth: 100, singleQuote: true, semi: true });
   }
 
   async function minifyCode(source, language) {
     if (language === 'css') {
-      if (!window.csso || typeof window.csso.minify !== 'function') {
-        throw new Error('CSS 압축 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
-      }
+      if (!window.csso || typeof window.csso.minify !== 'function') throw new Error('CSS 압축 도구를 불러오지 못했습니다.');
       const result = window.csso.minify(source);
-      if (!result || typeof result.css !== 'string') {
-        throw new Error('CSS 압축 결과를 만들지 못했습니다. 원문은 변경하지 않았습니다.');
-      }
+      if (!result || typeof result.css !== 'string') throw new Error('CSS 압축 결과를 만들지 못했습니다.');
       return result.css;
     }
+    if (language !== 'js') throw new Error(`실제 압축은 JavaScript와 CSS만 지원합니다. ${LABELS[language] || language} 원문은 변경하지 않았습니다.`);
+    if (!window.Terser || typeof window.Terser.minify !== 'function') throw new Error('JavaScript 압축 도구를 불러오지 못했습니다.');
 
-    if (language !== 'js') {
-      throw new Error(`실제 압축은 JavaScript와 CSS만 지원합니다. ${LABELS[language] || language} 원문은 변경하지 않았습니다.`);
-    }
-    if (!window.Terser || typeof window.Terser.minify !== 'function') {
-      throw new Error('JavaScript 압축 도구를 불러오지 못했습니다. 인터넷 연결과 CDN 접속을 확인하세요. 원문은 변경하지 않았습니다.');
-    }
-
-    // Terser parses JavaScript before rewriting it. Compression/mangling are disabled
-    // to avoid changing runtime semantics or public names; whitespace/comments shrink.
-    const result = await window.Terser.minify(source, {
-      compress: false,
-      mangle: false,
-      format: { comments: 'some' }
-    });
-    if (!result || typeof result.code !== 'string') {
-      throw new Error('압축 결과를 만들지 못했습니다. 원문은 변경하지 않았습니다.');
-    }
+    const result = await window.Terser.minify(source, { compress: false, mangle: false, format: { comments: 'some' } });
+    if (!result || typeof result.code !== 'string') throw new Error('압축 결과를 만들지 못했습니다.');
     return result.code;
+  }
+
+  function checkJavaScript(source) {
+    const problems = [];
+    try {
+      new Function(source);
+    } catch (error) {
+      return [`JavaScript 문법 오류: ${error.message}`];
+    }
+
+    const lines = source.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (/\b(?:eval|document\.write)\s*\(/.test(line)) problems.push(`${index + 1}행: 실행 중 위험이 있는 API 사용`);
+      if (/console\.log\s*\(/.test(line)) problems.push(`${index + 1}행: 디버그 로그 사용`);
+      if (/\b(?:==)\b/.test(line) && !/===/.test(line)) problems.push(`${index + 1}행: 느슨한 비교(==)를 발견했습니다. === 비교를 고려하세요.`);
+    });
+
+    if (/\b(?:null|undefined)/.test(source)) problems.push('null 또는 undefined 관련 표현을 확인하세요.');
+    return problems;
+  }
+
+  function checkHtml(source) {
+    const problems = [];
+    const stack = [];
+    const voidTags = new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
+    const tokens = source.match(/<\/?[a-z][^>]*>/gi) || [];
+
+    if (!/^\s*<!doctype\s+html/i.test(source)) problems.push('DOCTYPE 선언이 없습니다.');
+    tokens.forEach((token) => {
+      const opening = /^<([a-z][\w:-]*)/i.exec(token);
+      if (!opening) return;
+      const name = opening[1].toLowerCase();
+      if (/^<\//.test(token)) {
+        const expected = stack.pop();
+        if (expected !== name) problems.push(`닫는 태그에 문제가 있습니다: </${name}> (열린 태그: ${expected || '없음'})`);
+      } else if (!/\/\s*>$/.test(token) && !voidTags.has(name)) {
+        stack.push(name);
+      }
+    });
+    stack.forEach((name) => problems.push(`닫히지 않은 태그: <${name}>`));
+    return problems;
+  }
+
+  function checkCss(source) {
+    const problems = [];
+    const braces = [...source].filter((char) => char === '{').length - [...source].filter((char) => char === '}').length;
+    if (braces !== 0) problems.push(braces > 0 ? 'CSS 중괄호가 닫히지 않았습니다.' : 'CSS에 여분의 닫는 중괄호가 있습니다.');
+    if (/([^{};]+):\s*;/.test(source)) problems.push('값이 없는 CSS 속성이 있을 수 있습니다.');
+    return problems;
+  }
+
+  function checkPython(source) {
+    const problems = [];
+    const lines = source.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (/^(?:\s+)?(?:if|for|while|def|class).*[^:]\s*$/.test(line) && !/['"]/.test(line)) {
+        problems.push(`${index + 1}행: 콜론(:)이 필요한 제어문 또는 함수 정의를 확인하세요.`);
+      }
+      if (/\bprint\s+[^(]/.test(line)) problems.push(`${index + 1}행: Python print는 print(...) 형식을 사용해야 합니다.`);
+    });
+    return problems;
+  }
+
+  function checkCFamily(source) {
+    const problems = [];
+    const braceBalance = (source.match(/\{/g) || []).length - (source.match(/\}/g) || []).length;
+    const parenBalance = (source.match(/\(/g) || []).length - (source.match(/\)/g) || []).length;
+    if (braceBalance !== 0) problems.push(braceBalance > 0 ? '중괄호가 닫히지 않았습니다.' : '여분의 닫는 중괄호가 있습니다.');
+    if (parenBalance !== 0) problems.push(parenBalance > 0 ? '소괄호가 닫히지 않았습니다.' : '여분의 닫는 소괄호가 있습니다.');
+    if (/[^;{}]\s*\n/.test(source) && !source.includes('#include')) problems.push('세미콜론 누락 가능성을 확인하세요.');
+    return problems;
+  }
+
+  function checkGo(source) {
+    const problems = [];
+    if (!/^\s*package\s+\w+/m.test(source)) problems.push('Go package 선언이 없습니다.');
+    const braceBalance = (source.match(/\{/g) || []).length - (source.match(/\}/g) || []).length;
+    if (braceBalance !== 0) problems.push('Go 중괄호 균형이 맞지 않습니다.');
+    return problems;
+  }
+
+  function runBugCheck(source, language) {
+    if (!source.trim()) return ['검사할 코드가 없습니다.'];
+    let problems = [];
+    if (language === 'js') problems = checkJavaScript(source);
+    else if (language === 'html') problems = checkHtml(source);
+    else if (language === 'css') problems = checkCss(source);
+    else if (language === 'python') problems = checkPython(source);
+    else if (language === 'c' || language === 'cpp') problems = checkCFamily(source);
+    else if (language === 'go') problems = checkGo(source);
+
+    return problems.length ? problems.map((problem, index) => `${index + 1}. ${problem}`) : ['문제가 발견되지 않았습니다. 하지만 완전한 컴파일 검사가 아니므로 실제 실행 테스트도 해주세요.'];
   }
 
   function init() {
@@ -107,93 +160,69 @@
     const capability = byId('capabilityStatus');
     const inputStats = byId('inputStats');
     const outputStats = byId('outputStats');
-    let actionVersion = 0;
+
+    function updateStats() {
+      inputStats.textContent = `입력 크기: ${byteSize(input.value)} bytes`;
+      outputStats.textContent = `결과 크기: ${byteSize(output.value)} bytes`;
+    }
 
     function updateLanguageStatus() {
       const selected = selectedLanguage(language, input.value);
       const prefix = language.value === 'auto' ? '감지' : '선택';
       detected.textContent = `${prefix}: ${LABELS[selected] || LABELS.js}`;
-      const canFormat = Object.hasOwn(FORMAT_PARSERS, selected);
-      const canMinify = selected === 'js' || selected === 'css';
-      const actions = [canFormat ? '정렬 지원' : '정렬 미지원', canMinify ? '압축 지원' : '압축 미지원'];
-      capability.textContent = `${LABELS[selected] || selected}: ${actions.join(' · ')}`;
+      capability.textContent = `${LABELS[selected] || selected}: 버그 검사 지원 · 정렬/압축은 일부 언어만 지원`;
       return selected;
     }
 
-    function updateStats() {
-      const before = byteSize(input.value);
-      const after = byteSize(output.value);
-      const reduction = before ? ((before - after) / before) * 100 : 0;
-      inputStats.textContent = `입력 크기: ${before} bytes`;
-      outputStats.textContent = `결과 크기: ${after} bytes (절감률: ${reduction.toFixed(1)}%)`;
-    }
+    language.addEventListener('change', updateLanguageStatus);
+    input.addEventListener('input', () => { updateLanguageStatus(); updateStats(); });
 
-    async function run(operation) {
-      const thisAction = ++actionVersion;
-      const source = input.value;
-      const lang = updateLanguageStatus();
-      if (!source.trim()) {
-        output.value = '';
-        updateStats();
-        detected.textContent = '입력 코드가 비어 있습니다.';
-        return;
-      }
+    byId('btnCheck').addEventListener('click', () => {
+      const selected = updateLanguageStatus();
+      output.value = runBugCheck(input.value, selected).join('\n');
+      updateStats();
+      detected.textContent = '버그 검사 완료';
+    });
 
-      detected.textContent = operation === 'format' ? '정렬 중…' : '압축 중…';
+    byId('btnFormat').addEventListener('click', async () => {
       try {
-        const result = operation === 'format'
-          ? await formatCode(source, lang)
-          : await minifyCode(source, lang);
-        // Do not publish a stale result if the user edited the input meanwhile.
-        if (thisAction !== actionVersion || input.value !== source) return;
-        output.value = result;
+        const selected = updateLanguageStatus();
+        output.value = await formatCode(input.value, selected);
         updateStats();
-        detected.textContent = operation === 'format' ? '정렬 완료' : '압축 완료';
+        detected.textContent = '정렬 완료';
       } catch (error) {
-        if (thisAction !== actionVersion) return;
-        console.warn('Transformation was not applied:', error);
-        detected.textContent = error instanceof Error ? error.message : '변환에 실패했습니다. 원문은 변경하지 않았습니다.';
+        detected.textContent = error instanceof Error ? error.message : '정렬에 실패했습니다.';
       }
-    }
+    });
 
-    async function copyOutput() {
-      if (!output.value) {
-        detected.textContent = '복사할 결과가 없습니다.';
-        return;
-      }
+    byId('btnOptimize').addEventListener('click', async () => {
       try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(output.value);
-        } else {
-          output.focus();
-          output.select();
-          if (!document.execCommand('copy')) throw new Error('복사 명령이 지원되지 않습니다.');
-          input.focus();
+        const selected = updateLanguageStatus();
+        output.value = await minifyCode(input.value, selected);
+        updateStats();
+        detected.textContent = '압축 완료';
+      } catch (error) {
+        detected.textContent = error instanceof Error ? error.message : '압축에 실패했습니다.';
+      }
+    });
+
+    byId('btnCopy').addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(output.value);
+        else {
+          output.focus(); output.select();
+          if (!document.execCommand('copy')) throw new Error('복사 실패');
         }
         detected.textContent = '결과를 복사했습니다.';
       } catch (error) {
-        console.error('Clipboard copy failed:', error);
-        detected.textContent = '복사에 실패했습니다. 결과를 직접 선택해 복사해 주세요.';
+        detected.textContent = '복사에 실패했습니다.';
       }
-    }
-
-    language.addEventListener('change', updateLanguageStatus);
-    input.addEventListener('input', () => {
-      actionVersion++;
-      updateLanguageStatus();
-      updateStats();
     });
-    byId('btnOptimize').addEventListener('click', () => run('minify'));
-    byId('btnFormat').addEventListener('click', () => run('format'));
-    byId('btnCopy').addEventListener('click', copyOutput);
 
     updateLanguageStatus();
     updateStats();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else init();
 })();

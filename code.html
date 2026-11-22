@@ -33,6 +33,7 @@
           <option value="cpp">C++</option>
           <option value="go">Go</option>
         </select>
+        <button id="btnCheck" type="button">버그 검사</button>
         <button id="btnOptimize" type="button">최적화</button>
         <button id="btnFormat" type="button">정렬</button>
         <button id="btnCopy" type="button">복사</button>
@@ -46,7 +47,7 @@
         </div>
         <div class="editor-box">
           <label for="outputCode">결과 코드</label>
-          <textarea id="outputCode" spellcheck="false" readonly placeholder="최적화 또는 정렬 결과가 여기에 표시됩니다..."></textarea>
+          <textarea id="outputCode" spellcheck="false" readonly placeholder="버그 검사 결과가 여기에 표시됩니다..."></textarea>
           <div id="outputStats" class="stats">결과 크기: 0 bytes (절감률: 0%)</div>
         </div>
       </section>
